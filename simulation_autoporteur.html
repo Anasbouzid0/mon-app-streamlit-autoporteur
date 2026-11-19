@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulation : Étude expérimentale sur table à coussin d'air inclinée</title>
+    <!-- Chargement de Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Police Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Configuration MathJax pour un rendu mathématique propre des formules -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            color: #0f172a;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            touch-action: manipulation;
+        }
+        /* Animation douce pour l'apparition du bilan final */
+        @keyframes slideUpFade {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-bilan {
+            animation: slideUpFade 0.5s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- En-tête pédagogique -->
+    <header class="bg-amber-500 text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 py-3 sm:px-6 lg:px-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div>
+                <span class="text-xs font-bold uppercase tracking-wider bg-amber-600 px-2.5 py-0.5 rounded-full">Physique • 1ère Bac Sciences</span>
+                <h1 class="text-lg sm:text-xl font-bold mt-1">Activité 2 : Étude expérimentale sur table à coussin d'air inclinée</h1>
+            </div>
+            <div class="flex flex-wrap gap-2 text-xs sm:text-sm font-medium bg-amber-600/60 px-3 py-1.5 rounded-lg border border-amber-400/40">
+                <span>$m = 700\text{ g}$</span>
+                <span>•</span>
+                <span>$\alpha = 10^\circ$</span>
+                <span>•</span>
+                <span>$\tau = 60\text{ ms}$</span>
+                <span>•</span>
+                <span>$g = 9,8\text{ N}\cdot\text{kg}^{-1}$</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenu principal -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 py-5 sm:px-6 lg:px-8 space-y-5">
+
+        <!-- Barre de contrôles supérieure -->
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 flex flex-wrap items-center justify-between gap-4">
+            <!-- Boutons d'action principaux -->
+            <div class="flex flex-wrap items-center gap-2.5">
+                <button id="btnStartPause" class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold px-4 py-2.5 rounded-xl shadow-sm transition cursor-pointer">
+                    <svg id="iconPlay" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/></svg>
+                    <svg id="iconPause" class="w-5 h-5 hidden" fill="currentColor" viewBox="0 0 20 20"><path d="M5.75 3a.75.75 0 00-.75.75v12.5c0 .414.336.75.75.75h1.5a.75.75 0 00.75-.75V3.75A.75.75 0 007.25 3h-1.5zM12.75 3a.75.75 0 00-.75.75v12.5c0 .414.336.75.75.75h1.5a.75.75 0 00.75-.75V3.75a.75.75 0 00-.75-.75h-1.5z"/></svg>
+                    <span id="txtStartPause">Lancer sans vitesse initiale</span>
+                </button>
+
+                <button id="btnReset" class="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-semibold px-4 py-2.5 rounded-xl border border-slate-300 transition cursor-pointer">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    <span>Réinitialiser</span>
+                </button>
+            </div>
+
+            <!-- Sélecteur de vitesse d'animation -->
+            <div class="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
+                <span class="text-xs font-semibold text-slate-500 uppercase">Vitesse :</span>
+                <div class="flex gap-1" id="speedControls">
+                    <button data-speed="0.2" class="speed-btn px-2.5 py-1 rounded-lg text-xs font-semibold transition bg-blue-100 text-blue-700 border border-blue-300">Ralenti 0.2x</button>
+                    <button data-speed="0.5" class="speed-btn px-2.5 py-1 rounded-lg text-xs font-semibold transition text-slate-600 hover:bg-slate-200">0.5x</button>
+                    <button data-speed="1.0" class="speed-btn px-2.5 py-1 rounded-lg text-xs font-semibold transition text-slate-600 hover:bg-slate-200">Réel 1x</button>
+                </div>
+            </div>
+
+            <!-- Options d'affichage des vecteurs -->
+            <div class="flex flex-wrap items-center gap-4">
+                <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+                    <input type="checkbox" id="chkForces" checked class="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500">
+                    <span class="text-sm font-medium text-slate-700">Forces <strong class="text-red-600">$\vec{P}$</strong> et <strong class="text-emerald-600">$\vec{R}$</strong></span>
+                </label>
+
+                <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+                    <input type="checkbox" id="chkProj" class="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500">
+                    <span class="text-sm font-medium text-slate-700">Projection de $\vec{P}$</span>
+                </label>
+
+                <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+                    <input type="checkbox" id="chkVel" class="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500">
+                    <span class="text-sm font-medium text-slate-700">Vecteur vitesse <strong class="text-indigo-600">$\vec{v}$</strong></span>
+                </label>
+            </div>
+        </section>
+
+        <!-- Zone Canvas de simulation (Plan incliné + Bande d'enregistrement) -->
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <!-- Barre d'état en direct -->
+            <div class="bg-slate-50 border-b border-slate-200 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 text-sm">
+                <div class="flex items-center gap-3">
+                    <span id="statusBadge" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
+                        <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                        Prêt au lâcher en $G_0$ ($v_0 = 0$)
+                    </span>
+                    <span class="text-slate-600 font-medium">Temps écoulé : <strong id="liveTime" class="font-mono text-slate-900">0 ms</strong></span>
+                </div>
+                <div class="flex items-center gap-4 text-slate-600 font-medium">
+                    <span>Position : <strong id="livePos" class="font-mono text-blue-700">0,0 mm</strong></span>
+                    <span>Points enregistrés : <strong id="livePoints" class="font-mono text-slate-900">1 / 8 ($G_0$)</strong></span>
+                </div>
+            </div>
+
+            <!-- Conteneur du Canvas responsive -->
+            <div id="canvasWrapper" class="relative w-full h-[460px] sm:h-[520px] bg-white">
+                <canvas id="simCanvas"></canvas>
+            </div>
+
+            <!-- Légende visuelle rapide -->
+            <div class="bg-slate-50 border-t border-slate-200 px-4 py-2.5 flex flex-wrap items-center justify-center gap-6 text-xs sm:text-sm text-slate-600">
+                <div class="flex items-center gap-2">
+                    <span class="w-4 h-1 bg-red-600 inline-block rounded"></span>
+                    <span><strong>$\vec{P}$</strong> : Poids du mobile ($P = m \cdot g = 6,86\text{ N}$)</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="w-4 h-1 bg-emerald-600 inline-block rounded"></span>
+                    <span><strong>$\vec{R}$</strong> : Réaction normale du plan ($R = P\cos\alpha = 6,76\text{ N}$)</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full bg-slate-800 inline-block"></span>
+                    <span><strong>$G_i$</strong> : Étincelles d'enregistrement toutes les $\tau = 60\text{ ms}$</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section Bilan & Exploitation pédagogique (Affichée automatiquement en fin de simulation ou sur demande) -->
+        <div class="flex justify-end">
+            <button id="btnToggleBilan" class="text-sm font-semibold text-blue-600 hover:text-blue-800 underline cursor-pointer">
+                Afficher / Masquer le bilan complet des calculs
+            </button>
+        </div>
+
+        <section id="bilanSection" class="hidden animate-bilan bg-white rounded-2xl shadow-md border-2 border-blue-200 overflow-hidden">
+            <div class="bg-gradient-to-r from-blue-700 to-indigo-700 text-white px-6 py-4 flex items-center justify-between">
+                <div>
+                    <h2 class="text-lg sm:text-xl font-bold">Bilan de la simulation & Exploitation expérimentale</h2>
+                    <p class="text-blue-100 text-xs sm:text-sm mt-0.5">Vérification du théorème de l'énergie cinétique entre les positions $G_3$ et $G_5$</p>
+                </div>
+                <span class="hidden sm:inline-block bg-white/20 px-3 py-1 rounded-lg text-xs font-semibold">Niveau 1ère Bac</span>
+            </div>
+
+            <div class="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- 1. Bilan des forces -->
+                <div class="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-2">
+                    <div class="flex items-center gap-2 text-blue-800 font-bold text-base">
+                        <span class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs">1</span>
+                        <h3>Bilan des forces extérieures</h3>
+                    </div>
+                    <p class="text-sm text-slate-700 leading-relaxed">
+                        Le système étudié est le <strong>mobile autoporteur</strong> de masse $m = 700\text{ g} = 0,700\text{ kg}$. Les frottements étant négligeables sur le coussin d'air, il est soumis à deux forces :
+                    </p>
+                    <ul class="text-sm text-slate-700 space-y-1.5 pl-4 list-disc">
+                        <li><strong class="text-red-600">Son poids $\vec{P}$</strong> : vertical, dirigé vers le bas, d'intensité $P = m \cdot g = 0,700 \times 9,8 = \mathbf{6,86\text{ N}}$.</li>
+                        <li><strong class="text-emerald-600">La réaction du plan $\vec{R}$</strong> : perpendiculaire au plan incliné vers le haut (car sans frottement), d'intensité $R = P\cos(10^\circ) \approx \mathbf{6,76\text{ N}}$.</li>
+                    </ul>
+                </div>
+
+                <!-- 2. Travail des forces entre G3 et G5 -->
+                <div class="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-2">
+                    <div class="flex items-center gap-2 text-blue-800 font-bold text-base">
+                        <span class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs">2</span>
+                        <h3>Travail des forces entre $G_3$ et $G_5$</h3>
+                    </div>
+                    <p class="text-sm text-slate-700">
+                        Distance parcourue : $G_3G_5 = G_3G_4 + G_4G_5 = 21 + 27 = 48\text{ mm} = \mathbf{0,048\text{ m}}$.
+                    </p>
+                    <div class="text-sm text-slate-700 space-y-1.5 bg-white p-3 rounded-lg border border-slate-200">
+                        <p>• <strong class="text-emerald-700">Travail de $\vec{R}$ :</strong> $\vec{R} \perp \overrightarrow{G_3G_5} \implies W_{G_3 \to G_5}(\vec{R}) = \mathbf{0\text{ J}}$</p>
+                        <p>• <strong class="text-red-700">Travail de $\vec{P}$ :</strong> $W_{G_3 \to G_5}(\vec{P}) = m \cdot g \cdot G_3G_5 \cdot \sin(\alpha)$</p>
+                        <p class="pl-4 font-mono text-xs sm:text-sm text-slate-800">$W_{G_3 \to G_5}(\vec{P}) = 0,700 \times 9,8 \times 0,048 \times \sin(10^\circ) \approx \mathbf{0,0572\text{ J}}$</p>
+                        <p class="pt-1 border-t border-slate-100 font-semibold text-blue-900">
+                            Somme des travaux : $\sum W_{G_3 \to G_5}(\vec{F}_{\text{ext}}) = W(\vec{P}) + W(\vec{R}) = \mathbf{0,0572\text{ J}}$
+                        </p>
+                    </div>
+                </div>
+
+                <!-- 3. Vitesses instantanées par encadrement -->
+                <div class="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-2">
+                    <div class="flex items-center gap-2 text-blue-800 font-bold text-base">
+                        <span class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs">3</span>
+                        <h3>Vitesses instantanées $v_3$ et $v_5$ (Encadrement)</h3>
+                    </div>
+                    <p class="text-xs text-slate-600">
+                        Méthode expérimentale d'encadrement avec $2\tau = 2 \times 60\text{ ms} = 0,12\text{ s}$ :
+                    </p>
+                    <div class="text-sm text-slate-700 space-y-2 bg-white p-3 rounded-lg border border-slate-200">
+                        <div>
+                            <p class="font-semibold text-indigo-700">En $G_3$ :</p>
+                            <p class="font-mono text-xs sm:text-sm">$v_3 = \dfrac{G_2G_4}{2\tau} = \dfrac{(15 + 21)\times 10^{-3}}{2 \times 0,060} = \dfrac{0,036}{0,12} = \mathbf{0,30\text{ m}\cdot\text{s}^{-1}}$</p>
+                        </div>
+                        <div class="pt-1.5 border-t border-slate-100">
+                            <p class="font-semibold text-indigo-700">En $G_5$ :</p>
+                            <p class="font-mono text-xs sm:text-sm">$v_5 = \dfrac{G_4G_6}{2\tau} = \dfrac{(27 + 33)\times 10^{-3}}{2 \times 0,060} = \dfrac{0,060}{0,12} = \mathbf{0,50\text{ m}\cdot\text{s}^{-1}}$</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Énergies cinétiques & Conclusion -->
+                <div class="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-2">
+                    <div class="flex items-center gap-2 text-blue-800 font-bold text-base">
+                        <span class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs">4</span>
+                        <h3>Énergies cinétiques & Conclusion</h3>
+                    </div>
+                    <div class="text-sm text-slate-700 space-y-1.5 bg-white p-3 rounded-lg border border-slate-200">
+                        <p>• En $G_3$ : $E_c(G_3) = \dfrac{1}{2} m v_3^2 = 0,5 \times 0,700 \times (0,30)^2 = \mathbf{0,0315\text{ J}}$</p>
+                        <p>• En $G_5$ : $E_c(G_5) = \dfrac{1}{2} m v_5^2 = 0,5 \times 0,700 \times (0,50)^2 = \mathbf{0,0875\text{ J}}$</p>
+                        <p class="font-semibold text-blue-900 pt-1 border-t border-slate-100">
+                            Variation : $\Delta E_c = E_c(G_5) - E_c(G_3) = 0,0875 - 0,0315 = \mathbf{0,0560\text{ J}}$
+                        </p>
+                    </div>
+                    <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-2.5 text-xs sm:text-sm text-emerald-900">
+                        <strong>Conclusion :</strong> Aux incertitudes expérimentales près (arrondis de mesure au millimètre), on constate que $\Delta E_{c(G_3 \to G_5)} \approx \sum W_{G_3 \to G_5}(\vec{F}_{\text{ext}})$ ($0,056\text{ J} \approx 0,057\text{ J}$), ce qui vérifie le <strong>théorème de l'énergie cinétique</strong>.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        /**
+         * SIMULATION INTERACTIVE : MOBILE AUTOPORTEUR SUR PLAN INCLINÉ
+         * Paramètres physiques fidèles à l'activité expérimentale :
+         * m = 0.700 kg, alpha = 10°, g = 9.8 N/kg, tau = 0.060 s
+         * Distances expérimentales (en mm) :
+         * G0G1=3, G1G2=9, G2G3=15, G3G4=21, G4G5=27, G5G6=33, G6G7=39
+         */
+
+        // --- 1. CONSTANTES ET DONNÉES DE L'ACTIVITÉ ---
+        const MASS = 0.700;               // kg
+        const ALPHA_DEG = 10;             // degrés
+        const ALPHA_RAD = ALPHA_DEG * Math.PI / 180;
+        const G_ACCEL = 9.8;              // N/kg
+        const TAU = 0.060;                // s (60 ms)
+
+        // Distances successives exactes de l'énoncé (en mm)
+        const SEGMENT_DISTANCES_MM = [3, 9, 15, 21, 27, 33, 39];
+
+        // Positions cumulées exactes G0 à G7 (en mm) : [0, 3, 12, 27, 48, 75, 108, 147]
+        const CUMULATIVE_POS_MM = [0];
+        SEGMENT_DISTANCES_MM.forEach((d, idx) => {
+            CUMULATIVE_POS_MM.push(CUMULATIVE_POS_MM[idx] + d);
+        });
+
+        const TOTAL_DIST_MM = CUMULATIVE_POS_MM[CUMULATIVE_POS_MM.length - 1]; // 147 mm
+        const TOTAL_TIME_S = 7 * TAU; // 0.420 s (420 ms)
+
+        // Accélération théorique correspondant exactement aux distances expérimentales :
+        // x(t) = 0.5 * a * t^2 => à t = 0.06s, x1 = 0.5 * a * 0.0036 = 3 mm => a = 6 / 0.0036 = 1666.67 mm/s² (1.667 m/s²)
+        // (Très proche de g * sin(10°) = 9.8 * 0.17365 = 1.702 m/s², l'énoncé arrondit les mesures au mm)
+        const ACCEL_MM_S2 = (2 * SEGMENT_DISTANCES_MM[0]) / (TAU * TAU);
+
+        // --- 2. ÉTAT DE LA SIMULATION ---
+        let state = {
+            isRunning: false,
+            isFinished: false,
+            elapsedTime: 0,       // en secondes (de 0 à 0.420 s)
+            speedMultiplier: 0.2, // Ralenti par défaut pour bien observer
+            showForces: true,
+            showProj: false,
+            showVel: false,
+            lastFrameTime: null
+        };
+
+        // --- 3. RÉFÉRENCES DOM ---
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const canvasWrapper = document.getElementById('canvasWrapper');
+
+        const btnStartPause = document.getElementById('btnStartPause');
+        const txtStartPause = document.getElementById('txtStartPause');
+        const iconPlay = document.getElementById('iconPlay');
+        const iconPause = document.getElementById('iconPause');
+        const btnReset = document.getElementById('btnReset');
+
+        const speedBtns = document.querySelectorAll('.speed-btn');
+        const chkForces = document.getElementById('chkForces');
+        const chkProj = document.getElementById('chkProj');
+        const chkVel = document.getElementById('chkVel');
+
+        const statusBadge = document.getElementById('statusBadge');
+        const liveTime = document.getElementById('liveTime');
+        const livePos = document.getElementById('livePos');
+        const livePoints = document.getElementById('livePoints');
+
+        const bilanSection = document.getElementById('bilanSection');
+        const btnToggleBilan = document.getElementById('btnToggleBilan');
+
+        // --- 4. GESTION DU REDIMENSIONNEMENT RESPONSIVE DU CANVAS ---
+        let dpr = window.devicePixelRatio || 1;
+        let canvasWidth = 800;
+        let canvasHeight = 500;
+
+        function resizeCanvas() {
+            const rect = canvasWrapper.getBoundingClientRect();
+            dpr = window.devicePixelRatio || 1;
+            canvasWidth = rect.width;
+            canvasHeight = rect.height;
+
+            canvas.width = canvasWidth * dpr;
+            canvas.height = canvasHeight * dpr;
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+            drawScene();
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        // --- 5. FONCTIONS DE DESSIN VECTORIEL ---
+        function drawArrow(ctx, x1, y1, x2, y2, color, lineWidth = 2.5, headLength = 10) {
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const length = Math.hypot(dx, dy);
+            if (length < 2) return;
+
+            const angle = Math.atan2(dy, dx);
+
+            ctx.save();
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = lineWidth;
+            ctx.lineCap = 'round';
+
+            // Tige de la flèche
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+
+            // Pointe de la flèche
+            ctx.beginPath();
+            ctx.moveTo(x2, y2);
+            ctx.lineTo(x2 - headLength * Math.cos(angle - Math.PI / 6), y2 - headLength * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(x2 - headLength * Math.cos(angle + Math.PI / 6), y2 - headLength * Math.sin(angle + Math.PI / 6));
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function drawVectorLabel(ctx, text, x, y, color) {
+            ctx.save();
+            ctx.font = 'bold 14px Inter, sans-serif';
+            ctx.fillStyle = color;
+            ctx.fillText(text, x, y);
+            // Petite flèche au-dessus de la lettre du vecteur
+            const textWidth = ctx.measureText(text).width;
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(x, y - 13);
+            ctx.lineTo(x + textWidth, y - 13);
+            ctx.lineTo(x + textWidth - 3, y - 15.5);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        // --- 6. RENDU PRINCIPAL DE LA SCÈNE ---
+        function drawScene() {
+            ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+            // Calcul des positions physiques actuelles
+            // Interpolation fluide par morceaux entre les points exacts G0..G7
+            const exactStepFloat = Math.min(7, state.elapsedTime / TAU);
+            const currentIdx = Math.floor(exactStepFloat);
+            const frac = exactStepFloat - currentIdx;
+
+            let currentPosMM = 0;
+            if (currentIdx >= 7) {
+                currentPosMM = TOTAL_DIST_MM;
+            } else {
+                // Interpolation quadratique locale pour respecter v0 = 0 et l'accélération uniforme
+                const tLocal = state.elapsedTime;
+                currentPosMM = Math.min(TOTAL_DIST_MM, 0.5 * ACCEL_MM_S2 * tLocal * tLocal);
+            }
+
+            // Nombre de points enregistrés (G0 est présent dès t = 0)
+            const recordedCount = Math.min(8, Math.floor((state.elapsedTime + 1e-6) / TAU) + 1);
+
+            // Mise à jour de l'interface texte en direct
+            liveTime.textContent = `${Math.round(state.elapsedTime * 1000)} ms`;
+            livePos.textContent = `${currentPosMM.toFixed(1).replace('.', ',')} mm`;
+            livePoints.textContent = `${recordedCount} / 8 (G₀ à G${recordedCount - 1})`;
+
+            // ==========================================================
+            // PARTIE A : LE PLAN INCLINÉ ET LE MOBILE AUTOPORTEUR (Haut)
+            // ==========================================================
+            const marginX = Math.max(40, canvasWidth * 0.08);
+            const planeSectionHeight = canvasHeight * 0.62;
+
+            // Angle visuel légèrement amplifié ou fidèle ?
+            // On utilise 12° visuellement si l'écran est étroit, ou fidèle 10° pour une clarté maximale.
+            // Gardons 10° fidèle avec une échelle généreuse.
+            const visualAngle = ALPHA_RAD;
+
+            // Longueur visuelle du rail incliné
+            const railLengthPx = Math.min(canvasWidth - 2 * marginX, 760);
+            const startX = (canvasWidth - railLengthPx * Math.cos(visualAngle)) / 2;
+            const startY = Math.max(85, planeSectionHeight * 0.30);
+
+            const endX = startX + railLengthPx * Math.cos(visualAngle);
+            const endY = startY + railLengthPx * Math.sin(visualAngle);
+
+            // Échelle pixels / mm sur le plan incliné (147 mm occupe ~75% du rail)
+            const trackMarginPx = railLengthPx * 0.12;
+            const usableTrackPx = railLengthPx - 2 * trackMarginPx;
+            const pxPerMM = usableTrackPx / TOTAL_DIST_MM;
+
+            // 1. Dessin du support / triangle du plan incliné
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(endX, endY);
+            ctx.lineTo(startX, endY);
+            ctx.closePath();
+            const gradSupport = ctx.createLinearGradient(0, startY, 0, endY);
+            gradSupport.addColorStop(0, '#e2e8f0');
+            gradSupport.addColorStop(1, '#cbd5e1');
+            ctx.fillStyle = gradSupport;
+            ctx.fill();
+
+            // Ligne horizontale de référence et arc de l'angle alpha = 10°
+            ctx.strokeStyle = '#64748b';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([5, 4]);
+            ctx.beginPath();
+            ctx.moveTo(endX - 130, endY);
+            ctx.lineTo(endX + 10, endY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Arc pour alpha
+            ctx.beginPath();
+            ctx.arc(endX, endY, 85, Math.PI, Math.PI + visualAngle, false);
+            ctx.strokeStyle = '#d97706';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.fillStyle = '#b45309';
+            ctx.font = 'bold 13px Inter, sans-serif';
+            ctx.fillText('α = 10°', endX - 138, endY - 6);
+
+            // Table à coussin d'air (surface supérieure épaisse)
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 6;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(endX, endY);
+            ctx.stroke();
+
+            // Coussin d'air (petit liseré bleu cyan sur le dessus)
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(startX, startY - 3);
+            ctx.lineTo(endX, endY - 3);
+            ctx.stroke();
+            ctx.restore();
+
+            // Vecteurs unitaires le long du plan (u_x) et perpendiculaire vers le haut (u_y)
+            const ux = Math.cos(visualAngle);
+            const uy = Math.sin(visualAngle);
+            const nx = Math.sin(visualAngle);   // normale vers le haut-droite
+            const ny = -Math.cos(visualAngle);
+
+            // 2. Dessin des points enregistrés G0..G7 sur la table
+            for (let i = 0; i < recordedCount; i++) {
+                const distPx = trackMarginPx + CUMULATIVE_POS_MM[i] * pxPerMM;
+                const px = startX + distPx * ux + 4 * nx;
+                const py = startY + distPx * uy + 4 * ny;
+
+                // Point d'étincelle
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(px, py, 3.5, 0, Math.PI * 2);
+                ctx.fillStyle = (i === 3 || i === 5) ? '#2563eb' : '#0f172a';
+                ctx.fill();
+
+                // Étiquette Gi sous le rail
+                const labelX = startX + distPx * ux - 14 * nx - 7;
+                const labelY = startY + distPx * uy - 14 * ny + 12;
+                ctx.font = (i === 3 || i === 5) ? 'bold 12px Inter, sans-serif' : '600 11px Inter, sans-serif';
+                ctx.fillStyle = (i === 3 || i === 5) ? '#1d4ed8' : '#475569';
+                ctx.fillText(`G${i}`, labelX, labelY);
+                ctx.restore();
+            }
+
+            // 3. Dessin du Mobile Autoporteur à sa position actuelle
+            const puckDistPx = trackMarginPx + currentPosMM * pxPerMM;
+            const puckW = 58;
+            const puckH = 26;
+            const hoverGap = 4; // coussin d'air
+
+            // Centre d'inertie G du mobile
+            const gx = startX + puckDistPx * ux + (hoverGap + puckH / 2) * nx;
+            const gy = startY + puckDistPx * uy + (hoverGap + puckH / 2) * ny;
+
+            ctx.save();
+            ctx.translate(gx, gy);
+            ctx.rotate(visualAngle);
+
+            // Corps du palet autoporteur
+            const gradPuck = ctx.createLinearGradient(0, -puckH / 2, 0, puckH / 2);
+            gradPuck.addColorStop(0, '#3b82f6');
+            gradPuck.addColorStop(1, '#1d4ed8');
+            ctx.fillStyle = gradPuck;
+            ctx.strokeStyle = '#1e3a8a';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.roundRect(-puckW / 2, -puckH / 2, puckW, puckH, 6);
+            ctx.fill();
+            ctx.stroke();
+
+            // Petite buse / alimentation d'air au-dessus du mobile
+            ctx.fillStyle = '#64748b';
+            ctx.fillRect(-5, -puckH / 2 - 7, 10, 7);
+
+            // Centre d'inertie G (point blanc cerclé)
+            ctx.beginPath();
+            ctx.arc(0, 0, 4, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+            ctx.strokeStyle = '#0f172a';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            ctx.restore();
+
+            // Label "G" près du centre d'inertie
+            ctx.save();
+            ctx.font = 'bold 13px Inter, sans-serif';
+            ctx.fillStyle = '#0f172a';
+            ctx.fillText('G', gx - 18, gy - 6);
+            ctx.restore();
+
+            // 4. Dessin des vecteurs Forces P et R (et projections éventuelles)
+            const forceScalePx = 85; // longueur visuelle de P
+
+            if (state.showForces) {
+                // Vecteur Poids P : vertical vers le bas
+                const pxEnd = gx;
+                const pyEnd = gy + forceScalePx;
+                drawArrow(ctx, gx, gy, pxEnd, pyEnd, '#dc2626', 2.8, 10);
+                drawVectorLabel(ctx, 'P', pxEnd + 8, pyEnd - 4, '#dc2626');
+
+                // Vecteur Réaction R : perpendiculaire au plan vers le haut (R = P * cos(alpha))
+                const rLength = forceScalePx * Math.cos(visualAngle);
+                const rxEnd = gx + rLength * nx;
+                const ryEnd = gy + rLength * ny;
+                drawArrow(ctx, gx, gy, rxEnd, ryEnd, '#059669', 2.8, 10);
+                drawVectorLabel(ctx, 'R', rxEnd + 8, ryEnd + 6, '#059669');
+
+                // Option : Projection de P selon les axes (Px moteur et Py normal)
+                if (state.showProj) {
+                    const pParallel = forceScalePx * Math.sin(visualAngle);
+                    const pPerp = forceScalePx * Math.cos(visualAngle);
+
+                    const pParX = gx + pParallel * ux;
+                    const pParY = gy + pParallel * uy;
+
+                    const pPerpX = gx - pPerp * nx;
+                    const pPerpY = gy - pPerp * ny;
+
+                    // Lignes pointillées de projection
+                    ctx.save();
+                    ctx.setLineDash([4, 3]);
+                    ctx.strokeStyle = '#94a3b8';
+                    ctx.lineWidth = 1.2;
+                    ctx.beginPath();
+                    ctx.moveTo(pxEnd, pyEnd);
+                    ctx.lineTo(pParX, pParY);
+                    ctx.moveTo(pxEnd, pyEnd);
+                    ctx.lineTo(pPerpX, pPerpY);
+                    ctx.stroke();
+                    ctx.restore();
+
+                    // Composantes Px et Py
+                    drawArrow(ctx, gx, gy, pParX, pParY, '#ea580c', 2, 7);
+                    drawArrow(ctx, gx, gy, pPerpX, pPerpY, '#ea580c', 2, 7);
+                }
+            }
+
+            // Option : Vecteur vitesse instantanée v
+            if (state.showVel && state.elapsedTime > 0.005) {
+                const vCurrent = (ACCEL_MM_S2 / 1000) * state.elapsedTime; // en m/s (max ~0.70 m/s)
+                const vLenPx = Math.min(110, vCurrent * 140);
+                const vxEnd = gx + vLenPx * ux;
+                const vyEnd = gy + vLenPx * uy;
+                drawArrow(ctx, gx, gy, vxEnd, vyEnd, '#4f46e5', 2.5, 9);
+                drawVectorLabel(ctx, 'v', vxEnd + 6, vyEnd - 6, '#4f46e5');
+            }
+
+            // ==========================================================
+            // PARTIE B : BANDE D'ENREGISTREMENT HORIZONTALE (Bas)
+            // Reproduction fidèle de l'encadré de l'activité
+            // ==========================================================
+            const stripTopY = canvasHeight * 0.69;
+            const stripHeight = 68;
+            const stripMarginX = Math.max(30, canvasWidth * 0.07);
+            const stripWidth = canvasWidth - 2 * stripMarginX;
+
+            // Titre & flèche rouge "Sens du mouvement" comme sur l'image
+            ctx.save();
+            ctx.fillStyle = '#dc2626';
+            ctx.font = 'bold 13px Inter, sans-serif';
+            const sensText = 'Sens du mouvement';
+            ctx.fillText(sensText, stripMarginX + 15, stripTopY - 18);
+            drawArrow(ctx, stripMarginX + 15, stripTopY - 10, stripMarginX + 165, stripTopY - 10, '#dc2626', 2, 8);
+
+            // Cadre rectangulaire de la bande papier
+            ctx.fillStyle = '#f8fafc';
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.rect(stripMarginX, stripTopY, stripWidth, stripHeight);
+            ctx.fill();
+            ctx.stroke();
+
+            // Échelle horizontale de la bande papier
+            const stripInnerPad = Math.max(30, stripWidth * 0.06);
+            const stripUsableW = stripWidth - 2 * stripInnerPad;
+            const stripPxPerMM = stripUsableW / TOTAL_DIST_MM;
+
+            // Dessin des points G0..G7 enregistrés sur la bande et des cotes en mm
+            for (let i = 0; i < recordedCount; i++) {
+                const ptX = stripMarginX + stripInnerPad + CUMULATIVE_POS_MM[i] * stripPxPerMM;
+                const ptY = stripTopY + stripHeight * 0.42;
+
+                // Point d'enregistrement
+                ctx.beginPath();
+                ctx.arc(ptX, ptY, 4, 0, Math.PI * 2);
+                ctx.fillStyle = (i === 3 || i === 5) ? '#2563eb' : '#1e3a8a';
+                ctx.fill();
+
+                // Label Gi en dessous du point
+                ctx.font = (i === 3 || i === 5) ? 'bold 13px Inter, sans-serif' : '600 12px Inter, sans-serif';
+                ctx.fillStyle = (i === 3 || i === 5) ? '#1d4ed8' : '#1e3a8a';
+                ctx.textAlign = 'center';
+                ctx.fillText(`G${i}`, ptX, ptY + 23);
+
+                // Affichage des distances exactes GiG_{i+1} sous la bande (à partir de G1)
+                if (i > 0) {
+                    const prevPtX = stripMarginX + stripInnerPad + CUMULATIVE_POS_MM[i - 1] * stripPxPerMM;
+                    const midX = (prevPtX + ptX) / 2;
+                    const distVal = SEGMENT_DISTANCES_MM[i - 1];
+
+                    // Petit trait de cote sous la bande
+                    const coteY = stripTopY + stripHeight + 16;
+                    ctx.strokeStyle = '#94a3b8';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(prevPtX, stripTopY + stripHeight + 4);
+                    ctx.lineTo(prevPtX, coteY + 4);
+                    ctx.moveTo(ptX, stripTopY + stripHeight + 4);
+                    ctx.lineTo(ptX, coteY + 4);
+                    ctx.moveTo(prevPtX, coteY);
+                    ctx.lineTo(ptX, coteY);
+                    ctx.stroke();
+
+                    // Valeur en mm (masquée seulement sur très petit écran pour G0G1=3mm si trop serré)
+                    ctx.font = '600 11px Inter, sans-serif';
+                    ctx.fillStyle = '#334155';
+                    ctx.textAlign = 'center';
+                    if (ptX - prevPtX > 22 || canvasWidth > 520) {
+                        ctx.fillText(`${distVal} mm`, midX, coteY + 14);
+                    }
+                }
+            }
+            ctx.restore();
+        }
+
+        // --- 7. BOUCLE D'ANIMATION ---
+        function animateLoop(timestamp) {
+            if (!state.isRunning) return;
+
+            if (!state.lastFrameTime) {
+                state.lastFrameTime = timestamp;
+            }
+
+            const deltaSec = (timestamp - state.lastFrameTime) / 1000;
+            state.lastFrameTime = timestamp;
+
+            // Avancement du temps physique simulé
+            state.elapsedTime += deltaSec * state.speedMultiplier;
+
+            if (state.elapsedTime >= TOTAL_TIME_S) {
+                state.elapsedTime = TOTAL_TIME_S;
+                state.isRunning = false;
+                state.isFinished = true;
+                onSimulationFinished();
+            }
+
+            drawScene();
+
+            if (state.isRunning) {
+                requestAnimationFrame(animateLoop);
+            }
+        }
+
+        // --- 8. GESTION DES ÉTATS ET INTERACTIONS ---
+        function updatePlayButtonUI() {
+            if (state.isRunning) {
+                txtStartPause.textContent = 'Pause';
+                iconPlay.classList.add('hidden');
+                iconPause.classList.remove('hidden');
+                statusBadge.className = 'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800';
+                statusBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-blue-600 animate-ping"></span> Enregistrement en cours...';
+            } else if (state.isFinished) {
+                txtStartPause.textContent = 'Relancer l\'expérience';
+                iconPlay.classList.remove('hidden');
+                iconPause.classList.add('hidden');
+                statusBadge.className = 'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800';
+                statusBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-600"></span> Enregistrement terminé (G₀ à G₇)';
+            } else {
+                txtStartPause.textContent = state.elapsedTime > 0 ? 'Reprendre' : 'Lancer sans vitesse initiale';
+                iconPlay.classList.remove('hidden');
+                iconPause.classList.add('hidden');
+                statusBadge.className = 'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800';
+                statusBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-500"></span> Prêt au lâcher en G₀ (v₀ = 0)';
+            }
+        }
+
+        function onSimulationFinished() {
+            updatePlayButtonUI();
+            // Affichage automatique du bilan pédagogique complet en fin de simulation
+            bilanSection.classList.remove('hidden');
+            if (window.MathJax && MathJax.typesetPromise) {
+                MathJax.typesetPromise([bilanSection]).catch(() => {});
+            }
+            // Défilement doux vers le bilan après un court instant
+            setTimeout(() => {
+                bilanSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 250);
+        }
+
+        function resetSimulation() {
+            state.isRunning = false;
+            state.isFinished = false;
+            state.elapsedTime = 0;
+            state.lastFrameTime = null;
+            bilanSection.classList.add('hidden');
+            updatePlayButtonUI();
+            drawScene();
+        }
+
+        btnStartPause.addEventListener('click', () => {
+            if (state.isFinished) {
+                resetSimulation();
+            }
+            state.isRunning = !state.isRunning;
+            state.lastFrameTime = null;
+            updatePlayButtonUI();
+            if (state.isRunning) {
+                requestAnimationFrame(animateLoop);
+            }
+        });
+
+        btnReset.addEventListener('click', resetSimulation);
+
+        // Gestion des boutons de vitesse
+        speedBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                speedBtns.forEach(b => {
+                    b.className = 'speed-btn px-2.5 py-1 rounded-lg text-xs font-semibold transition text-slate-600 hover:bg-slate-200';
+                });
+                btn.className = 'speed-btn px-2.5 py-1 rounded-lg text-xs font-semibold transition bg-blue-100 text-blue-700 border border-blue-300';
+                state.speedMultiplier = parseFloat(btn.dataset.speed);
+            });
+        });
+
+        // Cases à cocher pour les vecteurs
+        chkForces.addEventListener('change', (e) => {
+            state.showForces = e.target.checked;
+            if (!state.showForces) {
+                chkProj.checked = false;
+                state.showProj = false;
+            }
+            drawScene();
+        });
+
+        chkProj.addEventListener('change', (e) => {
+            state.showProj = e.target.checked;
+            if (state.showProj && !state.showForces) {
+                chkForces.checked = true;
+                state.showForces = true;
+            }
+            drawScene();
+        });
+
+        chkVel.addEventListener('change', (e) => {
+            state.showVel = e.target.checked;
+            drawScene();
+        });
+
+        btnToggleBilan.addEventListener('click', () => {
+            bilanSection.classList.toggle('hidden');
+            if (!bilanSection.classList.contains('hidden') && window.MathJax && MathJax.typesetPromise) {
+                MathJax.typesetPromise([bilanSection]).catch(() => {});
+            }
+        });
+
+        // Initialisation au chargement de la fenêtre
+        window.onload = function () {
+            resizeCanvas();
+            updatePlayButtonUI();
+        };
+    </script>
+</body>
+</html>
