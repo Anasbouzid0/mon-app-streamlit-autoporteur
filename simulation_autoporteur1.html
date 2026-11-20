@@ -1,0 +1,3231 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simulation Interactive — Leçon 3 : Le mouvement (TC)</title>
+  <style>
+    /* =========================================================================
+       DESIGN TOKENS & PALETTE (MATCHING THE COURSE)
+       ========================================================================= */
+    :root {
+      --primary: #294a6b;
+      --primary-dark: #1d354e;
+      --primary-light: #ebf5ff;
+      --accent-orange: #f59e0b;
+      --accent-orange-bg: #fffbeb;
+      --success-green: #228b22;
+      --success-bg: #ecfdf5;
+      --vector-red: #dc2626;
+      --vector-red-bg: #fef2f2;
+      --bg-page: #f8fafc;
+      --bg-card: #ffffff;
+      --border: #dbe3ec;
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --radius: 10px;
+      --radius-sm: 6px;
+      --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08);
+      --shadow-md: 0 4px 12px rgba(41, 74, 107, 0.10);
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: var(--font-sans);
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      line-height: 1.4;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* =========================================================================
+       APP SHELL (FITS 100VH STREAMLIT IFRAME CLEANLY ON DESKTOP)
+       ========================================================================= */
+    .app-shell {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      max-height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Header Bar */
+    .app-header {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: #ffffff;
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-shrink: 0;
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.15);
+      z-index: 20;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .header-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.14);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .header-titles h1 {
+      font-size: 1.02rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .header-titles p {
+      font-size: 0.74rem;
+      color: #cbd5e1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .level-badge {
+      background: rgba(235, 245, 255, 0.16);
+      border: 1px solid rgba(235, 245, 255, 0.32);
+      color: #ebf5ff;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    /* Mode Prof / Mode Élève Toggle */
+    .mode-toggle-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1.5px solid #fcd34d;
+      background: #f59e0b;
+      color: #0f172a;
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.12s ease, background 0.15s ease, box-shadow 0.15s ease;
+      white-space: nowrap;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.18);
+    }
+
+    .mode-toggle-btn:hover {
+      background: #fbbf24;
+      transform: translateY(-1px);
+    }
+
+    .mode-toggle-btn.student-active {
+      background: #ffffff;
+      border-color: #93c5fd;
+      color: var(--primary);
+    }
+
+    /* Navigation Tabs */
+    .tab-nav {
+      background: #ffffff;
+      border-bottom: 1.5px solid var(--border);
+      padding: 6px 14px 0 14px;
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      flex-shrink: 0;
+      scrollbar-width: thin;
+    }
+
+    .tab-btn {
+      appearance: none;
+      background: transparent;
+      border: 1.5px solid transparent;
+      border-bottom: none;
+      border-radius: 8px 8px 0 0;
+      padding: 7px 13px;
+      font-family: var(--font-sans);
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      position: relative;
+      bottom: -1.5px;
+    }
+
+    .tab-btn:hover {
+      background: var(--primary-light);
+      color: var(--primary);
+    }
+
+    .tab-btn.active {
+      background: var(--bg-page);
+      color: var(--primary);
+      border-color: var(--border);
+      border-top: 3px solid var(--primary);
+      padding-top: 5.5px;
+    }
+
+    .tab-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--primary-light);
+      color: var(--primary);
+      font-size: 0.72rem;
+      font-weight: 700;
+      margin-right: 6px;
+    }
+
+    .tab-btn.active .tab-num {
+      background: var(--primary);
+      color: #ffffff;
+    }
+
+    /* =========================================================================
+       MAIN WORKSPACE
+       ========================================================================= */
+    .workspace {
+      flex: 1;
+      min-height: 0;
+      padding: 10px 14px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .tab-panel {
+      display: none;
+      flex: 1;
+      min-height: 0;
+      gap: 12px;
+    }
+
+    .tab-panel.active {
+      display: flex;
+    }
+
+    /* Two-column layout for tabs */
+    .col-main {
+      flex: 1.65;
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .col-side {
+      flex: 1;
+      min-width: 310px;
+      max-width: 440px;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overflow-y: auto;
+      padding-right: 2px;
+    }
+
+    /* Card component */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 7px 12px;
+      background: var(--primary-light);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .card-header.orange {
+      background: var(--accent-orange-bg);
+      border-bottom-color: #fde68a;
+    }
+
+    .card-header.green {
+      background: var(--success-bg);
+      border-bottom-color: #bbf7d0;
+    }
+
+    .card-header.red {
+      background: var(--vector-red-bg);
+      border-bottom-color: #fecaca;
+    }
+
+    .card-title {
+      font-size: 0.84rem;
+      font-weight: 700;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .card-header.orange .card-title { color: #b45309; }
+    .card-header.green .card-title { color: #166534; }
+    .card-header.red .card-title { color: #991b1b; }
+
+    .card-body {
+      padding: 10px 12px;
+    }
+
+    /* Canvas container */
+    .canvas-card {
+      flex: 1;
+      min-height: 220px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .canvas-wrap {
+      position: relative;
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+      background: #ffffff;
+      overflow: hidden;
+      touch-action: none;
+    }
+
+    canvas {
+      position: absolute;
+      inset: 0;
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Controls Bar */
+    .controls-bar {
+      padding: 8px 12px;
+      background: #f8fafc;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 12px;
+      flex-shrink: 0;
+    }
+
+    .btn-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      appearance: none;
+      border: 1px solid var(--border);
+      background: #ffffff;
+      color: var(--text-main);
+      padding: 5px 11px;
+      border-radius: var(--radius-sm);
+      font-family: var(--font-sans);
+      font-size: 0.79rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.14s ease;
+    }
+
+    .btn:hover {
+      background: var(--primary-light);
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #ffffff;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+      color: #ffffff;
+    }
+
+    .btn-orange {
+      background: var(--accent-orange);
+      border-color: #d97706;
+      color: #0f172a;
+    }
+
+    .btn-orange:hover {
+      background: #fbbf24;
+      color: #0f172a;
+    }
+
+    .btn-green {
+      background: var(--success-green);
+      border-color: #15803d;
+      color: #ffffff;
+    }
+
+    .btn-green:hover {
+      background: #166534;
+      color: #ffffff;
+    }
+
+    .btn.active-pill {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #ffffff;
+      box-shadow: 0 1px 4px rgba(41, 74, 107, 0.25);
+    }
+
+    /* Preset Selector Bar */
+    .preset-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 12px;
+      background: #ffffff;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .control-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .control-item input[type="range"] {
+      width: 92px;
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+
+    .control-item select,
+    .control-item input[type="number"] {
+      padding: 3px 7px;
+      border: 1px solid #cbd5e1;
+      border-radius: 5px;
+      font-family: var(--font-sans);
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-main);
+      background: #ffffff;
+    }
+
+    .check-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.77rem;
+      font-weight: 600;
+      color: var(--text-main);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .check-label input[type="checkbox"] {
+      accent-color: var(--primary);
+      width: 14px;
+      height: 14px;
+      cursor: pointer;
+    }
+
+    /* Typography & Values */
+    .mono {
+      font-family: var(--font-mono);
+      font-weight: 700;
+    }
+
+    .val-blue { color: var(--primary); }
+    .val-red { color: var(--vector-red); }
+    .val-green { color: var(--success-green); }
+    .val-orange { color: #b45309; }
+
+    .formula-box {
+      background: var(--primary-light);
+      border-left: 3.5px solid var(--primary);
+      border-radius: 5px;
+      padding: 7px 10px;
+      font-size: 0.82rem;
+      margin: 5px 0;
+    }
+
+    .formula-box.red {
+      background: var(--vector-red-bg);
+      border-left-color: var(--vector-red);
+    }
+
+    .formula-box.green {
+      background: var(--success-bg);
+      border-left-color: var(--success-green);
+    }
+
+    .formula-box.orange {
+      background: var(--accent-orange-bg);
+      border-left-color: var(--accent-orange);
+    }
+
+    /* Data Tables */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.76rem;
+    }
+
+    .data-table th, .data-table td {
+      border: 1px solid var(--border);
+      padding: 4px 5px;
+      text-align: center;
+    }
+
+    .data-table th {
+      background: var(--primary-light);
+      color: var(--primary);
+      font-weight: 700;
+    }
+
+    .data-table td.mono {
+      font-size: 0.75rem;
+    }
+
+    .data-table tr.highlight-row td {
+      background: #fef3c7;
+    }
+
+    /* Characteristics list */
+    .char-grid {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 3px 10px;
+      font-size: 0.79rem;
+      margin-top: 6px;
+    }
+
+    .char-label {
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    /* Status Badges (Tab 4) */
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .status-badge {
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: #ffffff;
+      font-size: 0.79rem;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .status-pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.73rem;
+      font-weight: 700;
+      width: fit-content;
+    }
+
+    .pill-rest {
+      background: #dcfce7;
+      color: #166534;
+      border: 1px solid #86efac;
+    }
+
+    .pill-move {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fca5a5;
+    }
+
+    /* Converter row */
+    .converter-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      font-size: 0.8rem;
+    }
+
+    .converter-input {
+      width: 78px;
+      padding: 4px 7px;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 6px;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: 0.82rem;
+      color: var(--primary);
+      text-align: right;
+    }
+
+    .converter-input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(41, 74, 107, 0.15);
+    }
+
+    /* Floating hint pill on canvas */
+    .canvas-hint {
+      position: absolute;
+      top: 8px;
+      right: 10px;
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 3px 10px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--primary);
+      pointer-events: none;
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* =========================================================================
+       MODE ÉLÈVE (MASK CALCULATED RESULTS, CLICK TO REVEAL INDIVIDUALLY)
+       ========================================================================= */
+    body.student-mode .answer-mask {
+      position: relative;
+      color: transparent !important;
+      background: #e2e8f0 !important;
+      border-radius: 4px;
+      user-select: none;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    body.student-mode .answer-mask * {
+      visibility: hidden;
+    }
+
+    body.student-mode .answer-mask::after {
+      content: "••• Cliquer pour révéler";
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #475569;
+      font-family: var(--font-sans);
+      font-size: 0.73rem;
+      font-weight: 700;
+      visibility: visible;
+      white-space: nowrap;
+      padding: 0 6px;
+    }
+
+    body.student-mode .answer-mask.inline-mask::after {
+      content: "???";
+      padding: 0 4px;
+    }
+
+    body.student-mode .answer-mask.revealed {
+      color: inherit !important;
+      background: transparent !important;
+    }
+
+    body.student-mode .answer-mask.revealed * {
+      visibility: visible;
+    }
+
+    body.student-mode .answer-mask.revealed::after {
+      display: none;
+    }
+
+    /* Tab 2 specific split layout */
+    .tab2-right {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex: 1.15;
+      min-width: 340px;
+      min-height: 0;
+      overflow-y: auto;
+    }
+
+    .graph-wrap {
+      position: relative;
+      height: 225px;
+      min-height: 195px;
+      width: 100%;
+      background: #ffffff;
+      overflow: hidden;
+    }
+
+    /* Small note text */
+    .note-text {
+      font-size: 0.76rem;
+      color: var(--text-muted);
+    }
+
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 6px 0;
+    }
+
+    /* =========================================================================
+       RESPONSIVE BREAKPOINTS (TABLET / MOBILE)
+       ========================================================================= */
+    @media (max-width: 960px) {
+      .app-shell {
+        height: auto;
+        max-height: none;
+        min-height: 100vh;
+        overflow: visible;
+      }
+
+      .workspace {
+        overflow: visible;
+      }
+
+      .tab-panel.active {
+        flex-direction: column;
+      }
+
+      .col-side, .tab2-right {
+        max-width: none;
+        min-width: 0;
+        overflow-y: visible;
+      }
+
+      .canvas-card {
+        min-height: 310px;
+      }
+
+      .app-header {
+        flex-wrap: wrap;
+        padding: 8px 12px;
+      }
+
+      .level-badge {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <!-- =====================================================================
+         HEADER BAR
+         ===================================================================== -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="header-icon" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9" stroke-dasharray="3 3"/>
+            <circle cx="12" cy="12" r="2.2" fill="#f59e0b" stroke="#f59e0b"/>
+            <line x1="12" y1="3" x2="20" y2="3" stroke="#fca5a5" stroke-width="2.5"/>
+            <polyline points="17 1 20 3 17 5" stroke="#fca5a5" stroke-width="2.2"/>
+          </svg>
+        </div>
+        <div class="header-titles">
+          <h1>Simulation Interactive — Leçon 3 : Le mouvement</h1>
+          <p>Prof. BOUZID Anas &bull; Lycée Qualifiant Hassan II — Kceibya</p>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <span class="level-badge">Tronc Commun — Physique</span>
+        <button id="modeToggleBtn" class="mode-toggle-btn" type="button" title="Basculer entre l'affichage des résultats (Mode Prof) et le masquage pour interroger la classe (Mode Élève)">
+          <span id="modeToggleIcon">&#128065;</span>
+          <span id="modeToggleText">Mode Prof (Afficher résultats)</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- =====================================================================
+         NAVIGATION TABS
+         ===================================================================== -->
+    <nav class="tab-nav" role="tablist">
+      <button class="tab-btn active" data-tab="tab1" role="tab" aria-selected="true">
+        <span class="tab-num">1</span>Activités 3 &amp; 4 : Vitesse moyenne &amp; instantanée
+      </button>
+      <button class="tab-btn" data-tab="tab2" role="tab" aria-selected="false">
+        <span class="tab-num">2</span>Activités 5 &amp; 6 : MRU &amp; Équation horaire
+      </button>
+      <button class="tab-btn" data-tab="tab3" role="tab" aria-selected="false">
+        <span class="tab-num">3</span>Activité 7 : Mouvement circulaire (MCU)
+      </button>
+      <button class="tab-btn" data-tab="tab4" role="tab" aria-selected="false">
+        <span class="tab-num">4</span>Activités 1 &amp; 2 : Référentiels &amp; Trajectoires
+      </button>
+    </nav>
+
+    <!-- =====================================================================
+         MAIN WORKSPACE
+         ===================================================================== -->
+    <main class="workspace">
+
+      <!-- ===================================================================
+           TAB 1 : ACTIVITÉS 3 & 4 — VITESSE MOYENNE & INSTANTANÉE
+           =================================================================== -->
+      <section id="tab1" class="tab-panel active">
+        <div class="col-main">
+          <div class="card canvas-card">
+            <div class="preset-bar">
+              <span style="font-size:0.78rem; font-weight:700; color:var(--primary);">Enregistrement :</span>
+              <div class="btn-group">
+                <button class="btn active-pill" data-t1-preset="cas1" type="button">Cas 1 : Table horizontale (MRU)</button>
+                <button class="btn" data-t1-preset="cas2" type="button">Cas 2 : Table inclinée (Accéléré)</button>
+                <button class="btn" data-t1-preset="cas3" type="button">Cas 3 : Mouvement retardé (Freinage)</button>
+              </div>
+            </div>
+
+            <div class="canvas-wrap" id="t1CanvasWrap">
+              <canvas id="t1Canvas"></canvas>
+              <div class="canvas-hint">Cliquez sur un point M<sub>i</sub> pour analyser V<sub>i</sub> &bull; Glissez la règle</div>
+            </div>
+
+            <div class="controls-bar">
+              <div class="btn-group">
+                <button id="t1PlayBtn" class="btn btn-primary" type="button">&#9654; Lancer</button>
+                <button id="t1StepBtn" class="btn" type="button">+1 &tau;</button>
+                <button id="t1ResetBtn" class="btn" type="button">&#8634; Réinitialiser</button>
+              </div>
+
+              <label class="control-item">
+                &tau; :
+                <input id="t1TauSlider" type="range" min="20" max="100" step="10" value="40" />
+                <span id="t1TauVal" class="mono val-blue">40 ms</span>
+              </label>
+
+              <label class="control-item">
+                Ralenti :
+                <input id="t1SpeedSlider" type="range" min="0.2" max="1.0" step="0.1" value="0.5" />
+                <span id="t1SpeedVal" class="mono val-blue">0,5&times;</span>
+              </label>
+
+              <label class="check-label">
+                <input id="t1ShowRuler" type="checkbox" checked /> Règle graduée (cm)
+              </label>
+              <label class="check-label">
+                <input id="t1ShowVec" type="checkbox" checked /> Vecteur vitesse V<sub>i</sub>
+              </label>
+              <label class="check-label">
+                <input id="t1ShowBracket" type="checkbox" checked /> Intervalle centré [M<sub>i-1</sub>, M<sub>i+1</sub>]
+              </label>
+            </div>
+          </div>
+
+          <!-- Interactive Unit Converter -->
+          <div class="card" style="flex-shrink:0;">
+            <div class="card-header">
+              <span class="card-title">Convertisseur d'unités de vitesse (m&middot;s<sup>&minus;1</sup> &harr; km&middot;h<sup>&minus;1</sup>)</span>
+              <span class="note-text">Facteur : <strong class="mono val-blue">1 m&middot;s<sup>&minus;1</sup> = 3,6 km&middot;h<sup>&minus;1</sup></strong></span>
+            </div>
+            <div class="card-body">
+              <div class="converter-row">
+                <label><strong>Vitesse :</strong></label>
+                <input id="convMs" class="converter-input" type="number" step="0.5" value="20" />
+                <span><strong>m&middot;s<sup>&minus;1</sup></strong></span>
+                <span style="color:var(--accent-orange); font-weight:800;">&times; 3,6 &rarr;</span>
+                <input id="convKmh" class="converter-input" type="number" step="1" value="72" />
+                <span><strong>km&middot;h<sup>&minus;1</sup></strong></span>
+                <span style="color:var(--text-muted); font-size:0.74rem;">(&larr; &divide; 3,6)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Sidebar: Calculations for Activity 3 & 4 -->
+        <aside class="col-side">
+          <!-- Activity 3: Average Speed -->
+          <div class="card">
+            <div class="card-header orange">
+              <span class="card-title">Activité 3 : Vitesse moyenne V<sub>m</sub></span>
+              <span id="t1NatureBadge" class="mono" style="font-size:0.73rem; color:#b45309;">MRU</span>
+            </div>
+            <div class="card-body">
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:6px; font-size:0.79rem;">
+                <span><strong>Entre</strong></span>
+                <select id="t1SelMa"></select>
+                <span><strong>et</strong></span>
+                <select id="t1SelMb"></select>
+                <span class="note-text" id="t1IntervalsInfo"></span>
+              </div>
+
+              <div class="formula-box orange answer-mask" id="t1VmBox">
+                <!-- Populated by JS -->
+              </div>
+
+              <div class="note-text" id="t1DistCompare" style="margin-top:5px;">
+                <!-- Populated by JS -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Activity 4: Instantaneous Speed & Vector -->
+          <div class="card">
+            <div class="card-header red">
+              <span class="card-title">Activité 4 : Vitesse instantanée V<sub>i</sub> &amp; Vecteur</span>
+            </div>
+            <div class="card-body">
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-bottom:6px; font-size:0.79rem;">
+                <label class="control-item">
+                  Point analysé :
+                  <select id="t1SelMi"></select>
+                </label>
+                <label class="control-item">
+                  Échelle : 1 cm &harr;
+                  <select id="t1VecScale">
+                    <option value="0.10">0,10 m/s</option>
+                    <option value="0.20" selected>0,20 m/s</option>
+                    <option value="0.25">0,25 m/s</option>
+                    <option value="0.50">0,50 m/s</option>
+                  </select>
+                </label>
+              </div>
+
+              <div class="formula-box red answer-mask" id="t1ViBox">
+                <!-- Populated by JS -->
+              </div>
+
+              <div style="font-size:0.79rem; font-weight:700; color:var(--primary); margin-top:6px;">
+                Caractéristiques du vecteur <span id="t1VecName" class="val-red">V&#8407;<sub>i</sub></span> :
+              </div>
+              <div class="char-grid answer-mask" id="t1CharGrid">
+                <!-- Populated by JS -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Recap Table of All Instantaneous Speeds -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Tableau des vitesses instantanées</span>
+            </div>
+            <div class="card-body" style="padding:7px 8px;">
+              <table class="data-table" id="t1SummaryTable">
+                <!-- Populated by JS -->
+              </table>
+            </div>
+          </div>
+        </aside>
+      </section>
+
+      <!-- ===================================================================
+           TAB 2 : ACTIVITÉS 5 & 6 — MRU & ÉQUATION HORAIRE
+           =================================================================== -->
+      <section id="tab2" class="tab-panel">
+        <div class="col-main">
+          <div class="card canvas-card">
+            <div class="preset-bar">
+              <button id="t2CoursePresetBtn" class="btn btn-orange" type="button">&#9733; Données du cours (Act. 5 &amp; 6)</button>
+              <label class="control-item">
+                Origine O :
+                <select id="t2OriginO">
+                  <option value="0">M0</option>
+                  <option value="1" selected>M1 (cours)</option>
+                  <option value="2">M2</option>
+                  <option value="3">M3</option>
+                  <option value="4">M4</option>
+                  <option value="5">M5</option>
+                </select>
+              </label>
+              <label class="control-item">
+                Origine dates t=0 :
+                <select id="t2OriginT">
+                  <option value="0">M0</option>
+                  <option value="1">M1</option>
+                  <option value="2" selected>M2 (cours)</option>
+                  <option value="3">M3</option>
+                  <option value="4">M4</option>
+                  <option value="5">M5</option>
+                </select>
+              </label>
+              <label class="control-item">
+                Vitesse V :
+                <input id="t2VSlider" type="range" min="-1.0" max="1.0" step="0.1" value="0.5" />
+                <span id="t2VVal" class="mono val-blue">+0,5 m/s</span>
+              </label>
+            </div>
+
+            <div class="canvas-wrap" id="t2TrackWrap">
+              <canvas id="t2TrackCanvas"></canvas>
+              <div class="canvas-hint">Repère (O, i&#8407;) &bull; &tau; = 40 ms &bull; Glissez la règle pour vérifier</div>
+            </div>
+
+            <div class="controls-bar">
+              <div class="btn-group">
+                <button id="t2PlayBtn" class="btn btn-primary" type="button">&#9654; Lancer</button>
+                <button id="t2StepBtn" class="btn" type="button">+1 &tau;</button>
+                <button id="t2ResetBtn" class="btn" type="button">&#8634; Réinitialiser</button>
+              </div>
+              <label class="check-label">
+                <input id="t2ShowRuler" type="checkbox" checked /> Règle graduée (cm)
+              </label>
+              <label class="check-label">
+                <input id="t2ShowSlope" type="checkbox" checked /> Triangle de pente (&Delta;x / &Delta;t)
+              </label>
+              <label class="check-label">
+                <input id="t2ShowIntercept" type="checkbox" checked /> Ordonnée à l'origine (x<sub>0</sub>)
+              </label>
+            </div>
+          </div>
+
+          <!-- Formula & Interpretation Card -->
+          <div class="card" style="flex-shrink:0;">
+            <div class="card-header green">
+              <span class="card-title">Équation horaire du MRU : x(t) = V &middot; t + x<sub>0</sub></span>
+              <span id="t2SenseTag" class="mono" style="font-size:0.75rem; color:#166534;">V &gt; 0</span>
+            </div>
+            <div class="card-body">
+              <div class="formula-box green answer-mask" id="t2EqBox">
+                <!-- Populated by JS -->
+              </div>
+              <div class="note-text" id="t2InterpBox" style="margin-top:4px;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right column: Table + Live Graph x = f(t) -->
+        <div class="tab2-right">
+          <div class="card" style="flex-shrink:0;">
+            <div class="card-header">
+              <span class="card-title">Tableau de mesures (Activité 6)</span>
+              <span class="note-text">&tau; = 40 ms</span>
+            </div>
+            <div class="card-body" style="padding:7px 8px;">
+              <table class="data-table" id="t2DataTable">
+                <!-- Populated by JS -->
+              </table>
+            </div>
+          </div>
+
+          <div class="card" style="flex:1; min-height:245px;">
+            <div class="card-header orange">
+              <span class="card-title">Représentation graphique : x = f(t)</span>
+              <span class="note-text">Droite affine (pente a = V, ordonnée b = x<sub>0</sub>)</span>
+            </div>
+            <div class="graph-wrap" id="t2GraphWrap" style="flex:1;">
+              <canvas id="t2GraphCanvas"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================================================================
+           TAB 3 : ACTIVITÉ 7 — MOUVEMENT CIRCULAIRE UNIFORME (MCU)
+           =================================================================== -->
+      <section id="tab3" class="tab-panel">
+        <div class="col-main">
+          <div class="card canvas-card">
+            <div class="preset-bar">
+              <button id="t3CoursePresetBtn" class="btn btn-orange" type="button">&#9733; Données du cours (R = 4 cm, &tau; = 40 ms)</button>
+              <label class="control-item">
+                Rayon R :
+                <input id="t3RSlider" type="range" min="2.0" max="6.0" step="0.5" value="4.0" />
+                <span id="t3RVal" class="mono val-blue">4,0 cm</span>
+              </label>
+              <label class="control-item">
+                &tau; :
+                <input id="t3TauSlider" type="range" min="20" max="80" step="10" value="40" />
+                <span id="t3TauVal" class="mono val-blue">40 ms</span>
+              </label>
+            </div>
+
+            <div class="canvas-wrap" id="t3CanvasWrap">
+              <canvas id="t3Canvas"></canvas>
+              <div class="canvas-hint">12 positions (30&deg; par &tau;) &bull; Échelle vecteurs : 1 cm &harr; 0,25 m/s</div>
+            </div>
+
+            <div class="controls-bar">
+              <div class="btn-group">
+                <button id="t3PlayBtn" class="btn btn-primary" type="button">&#9654; Lancer</button>
+                <button id="t3StepBtn" class="btn" type="button">+1 &tau;</button>
+                <button id="t3ResetBtn" class="btn" type="button">&#8634; Réinitialiser</button>
+              </div>
+              <label class="check-label">
+                <input id="t3Show4Vec" type="checkbox" checked /> Vecteurs (V<sub>2</sub>, V<sub>5</sub>, V<sub>8</sub>, V<sub>11</sub>)
+              </label>
+              <label class="check-label">
+                <input id="t3ShowAllVec" type="checkbox" /> Tous les V<sub>i</sub>
+              </label>
+              <label class="check-label">
+                <input id="t3ShowChords" type="checkbox" checked /> Cordes M<sub>1</sub>M<sub>3</sub> &amp; M<sub>4</sub>M<sub>6</sub>
+              </label>
+              <label class="check-label">
+                <input id="t3ShowLiveVec" type="checkbox" checked /> V&#8407; mobile
+              </label>
+              <label class="check-label">
+                <input id="t3ShowRuler" type="checkbox" /> Règle (cm)
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Sidebar: MCU Analysis -->
+        <aside class="col-side">
+          <div class="card">
+            <div class="card-header orange">
+              <span class="card-title">Activité 7 : Nature &amp; Cordes</span>
+            </div>
+            <div class="card-body">
+              <p style="font-size:0.8rem; margin-bottom:6px;">
+                <strong>Trajectoire :</strong> Cercle de centre <span class="mono val-blue">O</span> et de rayon <span id="t3RText" class="mono val-blue">R = 4,0 cm</span>.
+              </p>
+              <div class="formula-box orange answer-mask" id="t3ChordBox">
+                <!-- Populated by JS -->
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header red">
+              <span class="card-title">Point essentiel sur le vecteur vitesse</span>
+            </div>
+            <div class="card-body">
+              <div class="formula-box red" style="margin:0; font-size:0.8rem;">
+                La <strong>norme V est constante</strong>, mais la <strong>direction du vecteur V&#8407; change</strong> à chaque instant (toujours tangent au cercle) &rArr; <strong>le vecteur V&#8407; n'est PAS constant !</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header green">
+              <span class="card-title">Période T, Fréquence f et Relation V = 2&pi;Rf</span>
+            </div>
+            <div class="card-body">
+              <div class="formula-box green answer-mask" id="t3PeriodBox">
+                <!-- Populated by JS -->
+              </div>
+              <p class="note-text" style="margin-top:6px;">
+                <em>Remarque :</em> Le léger écart entre <span class="mono">T = 12&tau;</span> et <span class="mono">2&pi;R/V</span> provient de l'approximation de l'arc par la corde <span class="mono">M<sub>i-1</sub>M<sub>i+1</sub></span>.
+              </p>
+            </div>
+          </div>
+        </aside>
+      </section>
+
+      <!-- ===================================================================
+           TAB 4 : ACTIVITÉS 1 & 2 — RÉFÉRENTIELS & TRAJECTOIRES
+           =================================================================== -->
+      <section id="tab4" class="tab-panel">
+        <div class="col-main">
+          <div class="card canvas-card">
+            <div class="preset-bar" style="justify-content:space-between;">
+              <div class="btn-group">
+                <button class="btn active-pill" data-t4-demo="wheel" type="button">Activité 2 : La valve de la roue</button>
+                <button class="btn" data-t4-demo="train" type="button">Activité 1 : Le train et la gare</button>
+              </div>
+
+              <!-- Sub-controls for Wheel -->
+              <div id="t4WheelRefs" class="btn-group">
+                <button class="btn active-pill" data-wheel-ref="road" type="button">Réf. Route (piéton)</button>
+                <button class="btn" data-wheel-ref="bike" type="button">Réf. Cadre du vélo</button>
+                <button class="btn" data-wheel-ref="both" type="button">Vue simultanée</button>
+              </div>
+
+              <!-- Sub-controls for Train -->
+              <div id="t4TrainRefs" class="btn-group" style="display:none;">
+                <button class="btn active-pill" data-train-ref="station" type="button">Réf. Gare / Quai (C)</button>
+                <button class="btn" data-train-ref="train" type="button">Réf. Train (A ou B)</button>
+              </div>
+            </div>
+
+            <div class="canvas-wrap" id="t4CanvasWrap">
+              <canvas id="t4Canvas"></canvas>
+              <div class="canvas-hint" id="t4Hint">Référentiel : Route — La valve M décrit une cycloïde</div>
+            </div>
+
+            <div class="controls-bar">
+              <div class="btn-group">
+                <button id="t4PlayBtn" class="btn btn-primary" type="button">&#10074;&#10074; Pause</button>
+                <button id="t4ResetBtn" class="btn" type="button">&#8634; Réinitialiser</button>
+              </div>
+
+              <label class="control-item">
+                Vitesse :
+                <input id="t4SpeedSlider" type="range" min="0.2" max="2.0" step="0.1" value="1.0" />
+                <span id="t4SpeedVal" class="mono val-blue">1,0&times;</span>
+              </label>
+
+              <label class="check-label" id="t4ShowCenterWrap">
+                <input id="t4ShowCenter" type="checkbox" checked /> Trajectoire du centre C
+              </label>
+              <label class="check-label" id="t4ShowSpokesWrap">
+                <input id="t4ShowSpokes" type="checkbox" checked /> Rayons &amp; cadre
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Sidebar: Relativity Explanations & Live Status -->
+        <aside class="col-side">
+          <!-- Wheel Info Panel -->
+          <div id="t4WheelPanel" style="display:flex; flex-direction:column; gap:10px;">
+            <div class="card">
+              <div class="card-header orange">
+                <span class="card-title">Activité 2 : Relativité de la trajectoire</span>
+              </div>
+              <div class="card-body">
+                <p style="font-size:0.8rem; margin-bottom:6px;">
+                  Un cycliste roule en ligne droite sur une route horizontale. On observe la valve <strong class="val-red">M</strong> de la roue avant :
+                </p>
+                <div class="formula-box orange answer-mask">
+                  <div><strong>&bull; Par rapport au cadre du vélo :</strong></div>
+                  <div style="margin-left:10px; margin-bottom:5px;">La valve M décrit un <strong class="val-red">cercle</strong> (mouvement <strong>circulaire</strong>). Le centre C est <strong>au repos</strong>.</div>
+                  <div><strong>&bull; Par rapport à la route (piéton) :</strong></div>
+                  <div style="margin-left:10px;">La valve M décrit une <strong class="val-red">courbe en arches (cycloïde)</strong> (mouvement <strong>curviligne</strong>). Le centre C décrit une <strong class="val-blue">droite</strong> (mouvement rectiligne).</div>
+                </div>
+                <div class="formula-box green answer-mask" style="margin-top:8px;">
+                  <strong>Conclusion :</strong> La forme de la trajectoire d'un point dépend du <strong>référentiel choisi</strong>.
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title">Rappel — Situation de départ (Le chat)</span>
+              </div>
+              <div class="card-body">
+                <p style="font-size:0.79rem;">
+                  Un chat dort sur la plage arrière d'une voiture qui roule :
+                </p>
+                <div class="status-grid answer-mask" style="margin-top:6px;">
+                  <div class="status-badge">
+                    <span class="note-text">Par rapport à la voiture</span>
+                    <span class="status-pill pill-rest">AU REPOS</span>
+                  </div>
+                  <div class="status-badge">
+                    <span class="note-text">Par rapport à la route</span>
+                    <span class="status-pill pill-move">EN MOUVEMENT</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Train Info Panel -->
+          <div id="t4TrainPanel" style="display:none; flex-direction:column; gap:10px;">
+            <div class="card">
+              <div class="card-header orange">
+                <span class="card-title">Activité 1 : Le train et la gare</span>
+              </div>
+              <div class="card-body">
+                <p style="font-size:0.8rem; margin-bottom:8px;">
+                  Deux voyageurs <strong>A</strong> et <strong>B</strong> sont assis dans un train en marche. L'observateur <strong>C</strong> attend sur le quai de la gare.
+                </p>
+                <div class="status-grid answer-mask">
+                  <div class="status-badge">
+                    <span><strong>A</strong> par rapport à <strong>B</strong></span>
+                    <span class="status-pill pill-rest">AU REPOS</span>
+                  </div>
+                  <div class="status-badge">
+                    <span><strong>A</strong> par rapport à <strong>C</strong></span>
+                    <span class="status-pill pill-move">EN MOUVEMENT</span>
+                  </div>
+                  <div class="status-badge">
+                    <span><strong>B</strong> par rapport à la <strong>gare</strong></span>
+                    <span class="status-pill pill-move">EN MOUVEMENT</span>
+                  </div>
+                  <div class="status-badge">
+                    <span><strong>C</strong> par rapport au <strong>train</strong></span>
+                    <span class="status-pill pill-move">EN MOUVEMENT</span>
+                  </div>
+                </div>
+
+                <div class="formula-box green answer-mask" style="margin-top:10px;">
+                  <strong>Conclusion :</strong> Un même corps peut être au repos par rapport à un référentiel et en mouvement par rapport à un autre : le mouvement a un caractère <strong>relatif</strong>.
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title">Référentiels usuels</span>
+              </div>
+              <div class="card-body" style="font-size:0.79rem;">
+                <p style="margin-bottom:4px;">&bull; <strong>Référentiel terrestre :</strong> lié à la Terre (sol, route, classe) pour les mouvements terrestres.</p>
+                <p>&bull; <strong>Référentiel géocentrique :</strong> centre de la Terre + 3 étoiles fixes pour la Lune et les satellites.</p>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- =========================================================================
+       VANILLA JAVASCRIPT SIMULATION ENGINE (ZERO EXTERNAL DEPENDENCIES)
+       ========================================================================= -->
+  <script>
+    (function () {
+      'use strict';
+
+      /* =======================================================================
+         1. UTILITY FUNCTIONS
+         ======================================================================= */
+      const fmt = (val, dec = 2) => {
+        if (!isFinite(val)) return '—';
+        return val.toFixed(dec).replace('.', ',');
+      };
+
+      const fmtSigned = (val, dec = 2) => {
+        const s = val > 1e-9 ? '+' : (val < -1e-9 ? '−' : '');
+        return s + Math.abs(val).toFixed(dec).replace('.', ',');
+      };
+
+      // High-DPI canvas setup helper
+      function setupCanvas(canvas) {
+        const rect = canvas.parentElement.getBoundingClientRect();
+        const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+        const w = Math.max(100, Math.floor(rect.width));
+        const h = Math.max(100, Math.floor(rect.height));
+        if (canvas.width !== Math.floor(w * dpr) || canvas.height !== Math.floor(h * dpr)) {
+          canvas.width = Math.floor(w * dpr);
+          canvas.height = Math.floor(h * dpr);
+        }
+        const ctx = canvas.getContext('2d');
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        return { ctx, w, h };
+      }
+
+      // Draw crisp arrow
+      function drawArrow(ctx, x1, y1, x2, y2, color, lineWidth = 2.5, headLen = 9) {
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const len = Math.hypot(dx, dy);
+        if (len < 1) return;
+        const angle = Math.atan2(dy, dx);
+        ctx.save();
+        ctx.strokeStyle = color;
+        ctx.fillStyle = color;
+        ctx.lineWidth = lineWidth;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2 - Math.cos(angle) * (headLen * 0.65), y2 - Math.sin(angle) * (headLen * 0.65));
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(x2, y2);
+        ctx.lineTo(x2 - headLen * Math.cos(angle - Math.PI / 6), y2 - headLen * Math.sin(angle - Math.PI / 6));
+        ctx.lineTo(x2 - headLen * Math.cos(angle + Math.PI / 6), y2 - headLen * Math.sin(angle + Math.PI / 6));
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // Draw draggable virtual ruler (règle graduée en cm) matching exact pxPerCm
+      function drawVirtualRuler(ctx, ruler, pxPerCm, maxCm = 12) {
+        if (!ruler.visible) return;
+        const width = (maxCm + 0.8) * pxPerCm;
+        const height = 42;
+        const x0 = ruler.x;
+        const y0 = ruler.y;
+        const padLeft = 0.4 * pxPerCm;
+
+        ruler.w = width;
+        ruler.h = height;
+
+        ctx.save();
+        // Drop shadow
+        ctx.shadowColor = 'rgba(15, 23, 42, 0.16)';
+        ctx.shadowBlur = 8;
+        ctx.shadowOffsetY = 3;
+
+        // Ruler body
+        ctx.fillStyle = 'rgba(255, 251, 235, 0.94)';
+        ctx.strokeStyle = '#d97706';
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.roundRect(x0, y0, width, height, 5);
+        ctx.fill();
+        ctx.shadowColor = 'transparent';
+        ctx.stroke();
+
+        // Top ticks (mm & cm)
+        ctx.strokeStyle = '#1e293b';
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 10px ' + getComputedStyle(document.body).getPropertyValue('--font-mono');
+        ctx.textAlign = 'center';
+
+        const totalMm = maxCm * 10;
+        for (let mm = 0; mm <= totalMm; mm++) {
+          const tx = x0 + padLeft + (mm / 10) * pxPerCm;
+          let tickH = 6;
+          ctx.lineWidth = 0.8;
+          if (mm % 10 === 0) {
+            tickH = 14;
+            ctx.lineWidth = 1.4;
+            ctx.fillText(String(mm / 10), tx, y0 + 25);
+          } else if (mm % 5 === 0) {
+            tickH = 10;
+            ctx.lineWidth = 1.1;
+          }
+          ctx.beginPath();
+          ctx.moveTo(tx, y0);
+          ctx.lineTo(tx, y0 + tickH);
+          ctx.stroke();
+        }
+
+        // Unit & drag hint
+        ctx.fillStyle = '#b45309';
+        ctx.font = '600 9.5px ' + getComputedStyle(document.body).getPropertyValue('--font-sans');
+        ctx.textAlign = 'left';
+        ctx.fillText('cm   ↔ Glisser la règle', x0 + padLeft, y0 + height - 5);
+        ctx.restore();
+      }
+
+      // Attach drag behavior to a canvas for its ruler
+      function attachRulerDrag(canvas, getRuler, onRedraw, onClickFallback) {
+        let dragging = false;
+        let startX = 0, startY = 0;
+        let origX = 0, origY = 0;
+        let moved = false;
+
+        function getPos(e) {
+          const rect = canvas.getBoundingClientRect();
+          const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+          const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+          return { x: clientX - rect.left, y: clientY - rect.top };
+        }
+
+        function onDown(e) {
+          const pos = getPos(e);
+          const r = getRuler();
+          moved = false;
+          if (r && r.visible && pos.x >= r.x && pos.x <= r.x + r.w && pos.y >= r.y && pos.y <= r.y + r.h) {
+            dragging = true;
+            startX = pos.x;
+            startY = pos.y;
+            origX = r.x;
+            origY = r.y;
+            canvas.style.cursor = 'grabbing';
+            e.preventDefault();
+          } else if (onClickFallback) {
+            onClickFallback(pos.x, pos.y);
+          }
+        }
+
+        function onMove(e) {
+          const pos = getPos(e);
+          const r = getRuler();
+          if (dragging && r) {
+            const dx = pos.x - startX;
+            const dy = pos.y - startY;
+            if (Math.hypot(dx, dy) > 2) moved = true;
+            r.x = origX + dx;
+            r.y = origY + dy;
+            r.userMoved = true;
+            onRedraw();
+            e.preventDefault();
+          } else if (r && r.visible && pos.x >= r.x && pos.x <= r.x + r.w && pos.y >= r.y && pos.y <= r.y + r.h) {
+            canvas.style.cursor = 'grab';
+          } else {
+            canvas.style.cursor = 'default';
+          }
+        }
+
+        function onUp() {
+          if (dragging) {
+            dragging = false;
+            canvas.style.cursor = 'grab';
+          }
+        }
+
+        canvas.addEventListener('mousedown', onDown);
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+        canvas.addEventListener('touchstart', onDown, { passive: false });
+        window.addEventListener('touchmove', onMove, { passive: false });
+        window.addEventListener('touchend', onUp);
+      }
+
+      /* =======================================================================
+         2. GLOBAL MODE (PROF / ÉLÈVE) & TAB SWITCHING
+         ======================================================================= */
+      let studentMode = false;
+      const modeBtn = document.getElementById('modeToggleBtn');
+      const modeText = document.getElementById('modeToggleText');
+      const modeIcon = document.getElementById('modeToggleIcon');
+
+      modeBtn.addEventListener('click', () => {
+        studentMode = !studentMode;
+        document.body.classList.toggle('student-mode', studentMode);
+        modeBtn.classList.toggle('student-active', studentMode);
+        if (studentMode) {
+          modeIcon.innerHTML = '&#128274;';
+          modeText.textContent = 'Mode Élève (Masquer calculs)';
+          document.querySelectorAll('.answer-mask').forEach(el => el.classList.remove('revealed'));
+        } else {
+          modeIcon.innerHTML = '&#128065;';
+          modeText.textContent = 'Mode Prof (Afficher résultats)';
+        }
+      });
+
+      // Allow teacher to reveal an individual masked box by clicking it in Student Mode
+      document.addEventListener('click', (e) => {
+        if (!studentMode) return;
+        const mask = e.target.closest('.answer-mask');
+        if (mask) {
+          mask.classList.toggle('revealed');
+        }
+      });
+
+      let activeTab = 'tab1';
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const target = btn.dataset.tab;
+          if (target === activeTab) return;
+          activeTab = target;
+          document.querySelectorAll('.tab-btn').forEach(b => {
+            b.classList.toggle('active', b === btn);
+            b.setAttribute('aria-selected', b === btn ? 'true' : 'false');
+          });
+          document.querySelectorAll('.tab-panel').forEach(p => {
+            p.classList.toggle('active', p.id === target);
+          });
+          // Redraw newly visible canvases immediately
+          requestAnimationFrame(() => {
+            if (target === 'tab1') drawTab1();
+            if (target === 'tab2') { drawTab2Track(); drawTab2Graph(); }
+            if (target === 'tab3') drawTab3();
+            if (target === 'tab4') drawTab4();
+          });
+        });
+      });
+
+      /* =======================================================================
+         3. TAB 1 — ACTIVITÉS 3 & 4 (VITESSE MOYENNE & INSTANTANÉE)
+         ======================================================================= */
+      const t1Presets = {
+        cas1: {
+          name: 'Cas 1 : Table horizontale (MRU)',
+          nature: 'Mouvement rectiligne uniforme (MRU)',
+          shortNature: 'Uniforme (MRU)',
+          positions: [0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0],
+          defaultMa: 0,
+          defaultMb: 8,
+          defaultMi: 4,
+          interp: (u) => 1.0 * u,
+          compareText: 'Distances entre points successifs : MᵢMᵢ₊₁ = 1,0 cm (constantes) → la vitesse est constante.'
+        },
+        cas2: {
+          name: 'Cas 2 : Table inclinée (Accéléré)',
+          nature: 'Mouvement rectiligne accéléré',
+          shortNature: 'Accéléré',
+          positions: [0, 0.5, 1.5, 3.0, 5.0, 7.5],
+          defaultMa: 0,
+          defaultMb: 4,
+          defaultMi: 2,
+          interp: (u) => 0.25 * u + 0.25 * u * u,
+          compareText: 'Distances successives : 0,5 ; 1,0 ; 1,5 ; 2,0 ; 2,5 cm (croissantes) → la vitesse augmente.'
+        },
+        cas3: {
+          name: 'Cas 3 : Mouvement retardé (Freinage)',
+          nature: 'Mouvement rectiligne retardé (freinage)',
+          shortNature: 'Retardé',
+          positions: [0, 2.5, 4.5, 6.0, 7.0, 7.5],
+          defaultMa: 0,
+          defaultMb: 5,
+          defaultMi: 2,
+          interp: (u) => 2.75 * u - 0.25 * u * u,
+          compareText: 'Distances successives : 2,5 ; 2,0 ; 1,5 ; 1,0 ; 0,5 cm (décroissantes) → la vitesse diminue.'
+        }
+      };
+
+      const t1 = {
+        presetKey: 'cas1',
+        tauMs: 40,
+        animSpeed: 0.5,
+        playing: false,
+        simTimeMs: 320, // starts showing full recording for immediate exploration
+        ma: 0,
+        mb: 8,
+        mi: 4,
+        vecScale: 0.20, // 1 cm <-> 0.20 m/s
+        showRuler: true,
+        showVec: true,
+        showBracket: true,
+        ruler: { visible: true, x: 40, y: 175, w: 300, h: 42, userMoved: false },
+        hitPoints: []
+      };
+
+      const t1Canvas = document.getElementById('t1Canvas');
+      const t1PlayBtn = document.getElementById('t1PlayBtn');
+      const t1SelMa = document.getElementById('t1SelMa');
+      const t1SelMb = document.getElementById('t1SelMb');
+      const t1SelMi = document.getElementById('t1SelMi');
+
+      function populateTab1Selectors() {
+        const p = t1Presets[t1.presetKey];
+        const n = p.positions.length;
+        t1SelMa.innerHTML = '';
+        t1SelMb.innerHTML = '';
+        t1SelMi.innerHTML = '';
+        for (let i = 0; i < n; i++) {
+          t1SelMa.add(new Option('M' + i, i));
+          t1SelMb.add(new Option('M' + i, i));
+          if (i >= 1 && i <= n - 2) {
+            t1SelMi.add(new Option('M' + i, i));
+          }
+        }
+        t1SelMa.value = t1.ma;
+        t1SelMb.value = t1.mb;
+        t1SelMi.value = t1.mi;
+      }
+
+      function updateTab1Panels() {
+        const p = t1Presets[t1.presetKey];
+        const pos = p.positions;
+        const tauS = t1.tauMs / 1000;
+
+        document.getElementById('t1NatureBadge').textContent = p.shortNature;
+        document.getElementById('t1DistCompare').innerHTML = `<strong>Observation :</strong> ${p.compareText}`;
+
+        // Average speed Vm
+        const a = Math.min(t1.ma, t1.mb);
+        const b = Math.max(t1.ma, t1.mb);
+        const steps = b - a;
+        const distCm = pos[b] - pos[a];
+        const distM = distCm / 100;
+        const dtMs = steps * t1.tauMs;
+        const dtS = steps * tauS;
+
+        document.getElementById('t1IntervalsInfo').textContent = `(${steps} intervalle${steps > 1 ? 's' : ''} = ${dtMs} ms)`;
+
+        if (steps === 0) {
+          document.getElementById('t1VmBox').innerHTML = `Choisissez deux points distincts M<sub>a</sub> et M<sub>b</sub>.`;
+        } else {
+          const vm = distM / dtS;
+          const vmKmh = vm * 3.6;
+          document.getElementById('t1VmBox').innerHTML = `
+            <div>Distance : <span class="mono val-blue">M<sub>${a}</sub>M<sub>${b}</sub> = ${fmt(distCm, 1)} cm = ${fmt(distM, 3)} m</span></div>
+            <div>Durée : <span class="mono val-blue">&Delta;t = ${steps}&tau; = ${dtMs} ms = ${fmt(dtS, 2)} s</span></div>
+            <div style="margin-top:3px;">
+              V<sub>m</sub> = M<sub>${a}</sub>M<sub>${b}</sub> / &Delta;t = ${fmt(distM, 3)} / ${fmt(dtS, 2)}
+              = <span class="mono val-orange" style="font-size:0.9rem;">${fmt(vm, 2)} m&middot;s<sup>&minus;1</sup></span>
+              <span class="note-text">(${fmt(vmKmh, 1)} km&middot;h<sup>&minus;1</sup>)</span>
+            </div>
+          `;
+        }
+
+        // Instantaneous speed Vi
+        const i = t1.mi;
+        const dCenterCm = pos[i + 1] - pos[i - 1];
+        const dCenterM = dCenterCm / 100;
+        const dt2S = 2 * tauS;
+        const vi = dCenterM / dt2S;
+        const vecLenCm = vi / t1.vecScale;
+
+        document.getElementById('t1VecName').innerHTML = `V&#8407;<sub>${i}</sub>`;
+        document.getElementById('t1ViBox').innerHTML = `
+          <div>Intervalle centré : <span class="mono">M<sub>${i - 1}</sub>M<sub>${i + 1}</sub> = ${fmt(dCenterCm, 1)} cm = ${fmt(dCenterM, 3)} m</span></div>
+          <div>Durée centrée : <span class="mono">t<sub>${i + 1}</sub> &minus; t<sub>${i - 1}</sub> = 2&tau; = ${2 * t1.tauMs} ms = ${fmt(dt2S, 2)} s</span></div>
+          <div style="margin-top:3px;">
+            V<sub>${i}</sub> &approx; M<sub>${i - 1}</sub>M<sub>${i + 1}</sub> / (2&tau;) = ${fmt(dCenterM, 3)} / ${fmt(dt2S, 2)}
+            = <span class="mono val-red" style="font-size:0.9rem;">${fmt(vi, 2)} m&middot;s<sup>&minus;1</sup></span>
+          </div>
+        `;
+
+        document.getElementById('t1CharGrid').innerHTML = `
+          <span class="char-label">Origine :</span><span>Point M<sub>${i}</sub></span>
+          <span class="char-label">Direction :</span><span>Droite du mouvement (horizontale)</span>
+          <span class="char-label">Sens :</span><span>Celui du mouvement (vers la droite &rarr;)</span>
+          <span class="char-label">Norme :</span><span class="mono val-red">V<sub>${i}</sub> &approx; ${fmt(vi, 2)} m&middot;s<sup>&minus;1</sup></span>
+          <span class="char-label">Longueur :</span><span class="mono val-blue">${fmt(vecLenCm, 1)} cm (échelle 1 cm &harr; ${fmt(t1.vecScale, 2)} m/s)</span>
+        `;
+
+        // Summary table of all instantaneous speeds
+        let head = '<tr><th>Point</th>';
+        let rowD = '<tr><th>M<sub>i-1</sub>M<sub>i+1</sub> (cm)</th>';
+        let rowV = '<tr><th>V<sub>i</sub> (m&middot;s<sup>&minus;1</sup>)</th>';
+        for (let k = 1; k < pos.length - 1; k++) {
+          const dc = pos[k + 1] - pos[k - 1];
+          const vk = (dc / 100) / dt2S;
+          const hl = k === i ? ' style="background:#fef3c7;"' : '';
+          head += `<th${hl}>M<sub>${k}</sub></th>`;
+          rowD += `<td class="mono"${hl}>${fmt(dc, 1)}</td>`;
+          rowV += `<td class="mono val-red"${hl}><span class="answer-mask inline-mask">${fmt(vk, 2)}</span></td>`;
+        }
+        head += '</tr>';
+        rowD += '</tr>';
+        rowV += '</tr>';
+        document.getElementById('t1SummaryTable').innerHTML = head + rowD + rowV;
+      }
+
+      function drawTab1() {
+        const { ctx, w, h } = setupCanvas(t1Canvas);
+        const p = t1Presets[t1.presetKey];
+        const pos = p.positions;
+        const maxPosCm = Math.max(...pos, 8.5);
+        const marginLeft = 48;
+        const marginRight = 48;
+        const pxPerCm = Math.min((w - marginLeft - marginRight) / (maxPosCm + 1.5), 88);
+        const originX = marginLeft + 10;
+        const trackY = Math.round(h * 0.48);
+
+        ctx.clearRect(0, 0, w, h);
+
+        // Background light grid
+        ctx.save();
+        ctx.strokeStyle = '#f1f5f9';
+        ctx.lineWidth = 1;
+        for (let x = originX; x < w; x += pxPerCm / 2) {
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+        }
+        for (let y = 20; y < h; y += 24) {
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+        }
+        ctx.restore();
+
+        // Air table surface strip
+        ctx.save();
+        ctx.fillStyle = '#ebf5ff';
+        ctx.strokeStyle = '#294a6b';
+        ctx.lineWidth = 1.6;
+        const stripTop = trackY - 34;
+        const stripH = 68;
+        ctx.beginPath();
+        ctx.roundRect(18, stripTop, w - 36, stripH, 8);
+        ctx.fill();
+        ctx.stroke();
+
+        // Track center dashed line
+        ctx.strokeStyle = '#94a3b8';
+        ctx.setLineDash([5, 4]);
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(originX - 15, trackY);
+        ctx.lineTo(w - 30, trackY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+
+        // Live timer badge top-left
+        const maxTimeMs = (pos.length - 1) * t1.tauMs;
+        const curT = Math.min(t1.simTimeMs, maxTimeMs);
+        ctx.save();
+        ctx.fillStyle = '#294a6b';
+        ctx.beginPath();
+        ctx.roundRect(18, 12, 195, 28, 6);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 12px ' + getComputedStyle(document.body).getPropertyValue('--font-mono');
+        ctx.fillText(`t = ${Math.round(curT)} ms   (τ = ${t1.tauMs} ms)`, 28, 30);
+        ctx.restore();
+
+        // Direction arrow ("Sens du mouvement")
+        const arrowY = stripTop - 16;
+        drawArrow(ctx, originX, arrowY, originX + 95, arrowY, '#294a6b', 2.2, 8);
+        ctx.fillStyle = '#294a6b';
+        ctx.font = '600 11.5px ' + getComputedStyle(document.body).getPropertyValue('--font-sans');
+        ctx.fillText('Sens du mouvement', originX + 102, arrowY + 4);
+
+        // Determine how many points have been recorded
+        const recordedCount = Math.min(pos.length, Math.floor(curT / t1.tauMs + 1e-6) + 1);
+        t1.hitPoints = [];
+
+        // Highlight bracket [M_{i-1}, M_{i+1}] if visible & recorded
+        const selI = t1.mi;
+        if (t1.showBracket && selI >= 1 && selI + 1 < recordedCount) {
+          const xPrev = originX + pos[selI - 1] * pxPerCm;
+          const xNext = originX + pos[selI + 1] * pxPerCm;
+          const brY = trackY + 44;
+          ctx.save();
+          ctx.strokeStyle = '#f59e0b';
+          ctx.fillStyle = '#b45309';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(xPrev, trackY + 8);
+          ctx.lineTo(xPrev, brY);
+          ctx.lineTo(xNext, brY);
+          ctx.lineTo(xNext, trackY + 8);
+          ctx.stroke();
+
+          // Label pill on bracket
+          const dCm = pos[selI + 1] - pos[selI - 1];
+          const midX = (xPrev + xNext) / 2;
+          const label = `M${selI - 1}M${selI + 1} = ${fmt(dCm, 1)} cm`;
+          ctx.font = 'bold 11.5px ' + getComputedStyle(document.body).getPropertyValue('--font-mono');
+          const tw = ctx.measureText(label).width + 14;
+          ctx.fillStyle = '#fffbeb';
+          ctx.strokeStyle = '#f59e0b';
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.roundRect(midX - tw / 2, brY - 10, tw, 20, 4);
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = '#b45309';
+          ctx.textAlign = 'center';
+          ctx.fillText(label, midX, brY + 4);
+          ctx.restore();
+        }
+
+        // Draw recorded dots
+        for (let k = 0; k < recordedCount; k++) {
+          const px = originX + pos[k] * pxPerCm;
+          t1.hitPoints.push({ k, x: px, y: trackY });
+
+          const isSelected = (k === selI);
+          const isBracketEnd = t1.showBracket && (k === selI - 1 || k === selI + 1);
+
+          if (isSelected) {
+            ctx.beginPath();
+            ctx.arc(px, trackY, 10, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(220, 38, 38, 0.16)';
+            ctx.fill();
+          } else if (isBracketEnd) {
+            ctx.beginPath();
+            ctx.arc(px, trackY, 8, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(245, 158, 11, 0.22)';
+            ctx.fill();
+          }
+
+          ctx.beginPath();
+          ctx.arc(px, trackY, isSelected ? 4.8 : 3.8, 0, Math.PI * 2);
+          ctx.fillStyle = isSelected ? '#dc2626' : '#294a6b';
+          ctx.fill();
+
+          // Point label M_k (alternate above/below if tight)
+          ctx.fillStyle = isSelected ? '#dc2626' : '#0f172a';
+          ctx.font = (isSelected ? 'bold ' : '600 ') + '12px ' + getComputedStyle(document.body).getPropertyValue('--font-sans');
+          ctx.textAlign = 'center';
+          const labelOffset = (t1.presetKey !== 'cas1' && k % 2 === 1) ? 22 : -13;
+          ctx.fillText('M' + k, px, trackY + labelOffset);
+        }
+
+        // Draw live gliding air puck
+        const u = curT / t1.tauMs;
+        const puckCm = p.interp(u);
+        const puckX = originX + puckCm * pxPerCm;
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(puckX, trackY, 16, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(41, 74, 107, 0.14)';
+        ctx.strokeStyle = '#294a6b';
+        ctx.lineWidth = 2;
+        ctx.fill();
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(puckX, trackY, 3, 0, Math.PI * 2);
+        ctx.fillStyle = '#294a6b';
+        ctx.fill();
+        ctx.restore();
+
+        // Draw velocity vector V_i at scale
+        if (t1.showVec && selI >= 1 && selI + 1 < recordedCount) {
+          const xStart = originX + pos[selI] * pxPerCm;
+          const dCenterM = (pos[selI + 1] - pos[selI - 1]) / 100;
+          const vi = dCenterM / (2 * (t1.tauMs / 1000));
+          const lenCm = vi / t1.vecScale;
+          const lenPx = lenCm * pxPerCm;
+
+          drawArrow(ctx, xStart, trackY, xStart + lenPx, trackY, '#dc2626', 3.2, 10);
+
+          // Vector label
+          ctx.save();
+          ctx.fillStyle = '#dc2626';
+          ctx.font = 'bold 13px ' + getComputedStyle(document.body).getPropertyValue('--font-sans');
+          ctx.textAlign = 'center';
+          ctx.fillText(`V⃗${selI}`, xStart + lenPx / 2, trackY - 18);
+          ctx.restore();
+        }
+
+        // Position virtual ruler nicely if user hasn't dragged it yet
+        if (!t1.ruler.userMoved) {
+          t1.ruler.x = originX - 0.4 * pxPerCm;
+          t1.ruler.y = Math.min(h - 52, trackY + 62);
+        }
+        t1.ruler.visible = t1.showRuler;
+        drawVirtualRuler(ctx, t1.ruler, pxPerCm, Math.ceil(maxPosCm + 1));
+      }
+
+      // Tab 1 Event Listeners
+      document.querySelectorAll('[data-t1-preset]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('[data-t1-preset]').forEach(b => b.classList.remove('active-pill'));
+          btn.classList.add('active-pill');
+          t1.presetKey = btn.dataset.t1Preset;
+          const p = t1Presets[t1.presetKey];
+          t1.ma = p.defaultMa;
+          t1.mb = p.defaultMb;
+          t1.mi = p.defaultMi;
+          t1.playing = false;
+          t1.simTimeMs = (p.positions.length - 1) * t1.tauMs;
+          t1PlayBtn.innerHTML = '&#9654; Lancer';
+          t1.ruler.userMoved = false;
+          populateTab1Selectors();
+          updateTab1Panels();
+          drawTab1();
+        });
+      });
+
+      t1PlayBtn.addEventListener('click', () => {
+        const maxT = (t1Presets[t1.presetKey].positions.length - 1) * t1.tauMs;
+        if (!t1.playing && t1.simTimeMs >= maxT - 1) {
+          t1.simTimeMs = 0;
+        }
+        t1.playing = !t1.playing;
+        t1PlayBtn.innerHTML = t1.playing ? '&#10074;&#10074; Pause' : '&#9654; Lancer';
+      });
+
+      document.getElementById('t1StepBtn').addEventListener('click', () => {
+        t1.playing = false;
+        t1PlayBtn.innerHTML = '&#9654; Lancer';
+        const maxT = (t1Presets[t1.presetKey].positions.length - 1) * t1.tauMs;
+        const curStep = Math.floor(t1.simTimeMs / t1.tauMs + 1e-6);
+        t1.simTimeMs = Math.min(maxT, (curStep + 1) * t1.tauMs);
+        drawTab1();
+      });
+
+      document.getElementById('t1ResetBtn').addEventListener('click', () => {
+        t1.playing = false;
+        t1PlayBtn.innerHTML = '&#9654; Lancer';
+        t1.simTimeMs = 0;
+        drawTab1();
+      });
+
+      document.getElementById('t1TauSlider').addEventListener('input', (e) => {
+        const oldTau = t1.tauMs;
+        t1.tauMs = Number(e.target.value);
+        document.getElementById('t1TauVal').textContent = t1.tauMs + ' ms';
+        t1.simTimeMs = (t1.simTimeMs / oldTau) * t1.tauMs;
+        updateTab1Panels();
+        drawTab1();
+      });
+
+      document.getElementById('t1SpeedSlider').addEventListener('input', (e) => {
+        t1.animSpeed = Number(e.target.value);
+        document.getElementById('t1SpeedVal').innerHTML = fmt(t1.animSpeed, 1) + '&times;';
+      });
+
+      document.getElementById('t1ShowRuler').addEventListener('change', (e) => { t1.showRuler = e.target.checked; drawTab1(); });
+      document.getElementById('t1ShowVec').addEventListener('change', (e) => { t1.showVec = e.target.checked; drawTab1(); });
+      document.getElementById('t1ShowBracket').addEventListener('change', (e) => { t1.showBracket = e.target.checked; drawTab1(); });
+
+      t1SelMa.addEventListener('change', (e) => { t1.ma = Number(e.target.value); updateTab1Panels(); });
+      t1SelMb.addEventListener('change', (e) => { t1.mb = Number(e.target.value); updateTab1Panels(); });
+      t1SelMi.addEventListener('change', (e) => { t1.mi = Number(e.target.value); updateTab1Panels(); drawTab1(); });
+      document.getElementById('t1VecScale').addEventListener('change', (e) => { t1.vecScale = Number(e.target.value); updateTab1Panels(); drawTab1(); });
+
+      // Click on canvas dot M_i to select it
+      attachRulerDrag(t1Canvas, () => t1.ruler, drawTab1, (mx, my) => {
+        const n = t1Presets[t1.presetKey].positions.length;
+        for (const pt of t1.hitPoints) {
+          if (pt.k >= 1 && pt.k <= n - 2 && Math.hypot(mx - pt.x, my - pt.y) < 18) {
+            t1.mi = pt.k;
+            t1SelMi.value = pt.k;
+            updateTab1Panels();
+            drawTab1();
+            break;
+          }
+        }
+      });
+
+      // Unit converter logic
+      const convMs = document.getElementById('convMs');
+      const convKmh = document.getElementById('convKmh');
+      convMs.addEventListener('input', () => {
+        const v = parseFloat(convMs.value);
+        if (!isNaN(v)) convKmh.value = (v * 3.6).toFixed(2).replace(/\.00$/, '');
+      });
+      convKmh.addEventListener('input', () => {
+        const v = parseFloat(convKmh.value);
+        if (!isNaN(v)) convMs.value = (v / 3.6).toFixed(2).replace(/\.00$/, '');
+      });
+
+      /* =======================================================================
+         4. TAB 2 — ACTIVITÉS 5 & 6 (MRU & ÉQUATION HORAIRE)
+         ======================================================================= */
+      const t2 = {
+        tauMs: 40,
+        numPoints: 6, // M0..M5
+        originO: 1,   // default M1
+        originT: 2,   // default M2
+        V: 0.5,       // m/s
+        playing: false,
+        simTimeMs: 200, // 5 * 40ms
+        showRuler: true,
+        showSlope: true,
+        showIntercept: true,
+        ruler: { visible: true, x: 30, y: 155, w: 300, h: 42, userMoved: false }
+      };
+
+      const t2TrackCanvas = document.getElementById('t2TrackCanvas');
+      const t2GraphCanvas = document.getElementById('t2GraphCanvas');
+      const t2PlayBtn = document.getElementById('t2PlayBtn');
+
+      function getTab2Points() {
+        const tauS = t2.tauMs / 1000;
+        const pts = [];
+        for (let k = 0; k < t2.numPoints; k++) {
+          const xM = t2.V * (k - t2.originO) * tauS;
+          const xCm = xM * 100;
+          const tS = (k - t2.originT) * tauS;
+          pts.push({ k, xM, xCm, tS });
+        }
+        return pts;
+      }
+
+      function updateTab2Panels() {
+        const pts = getTab2Points();
+        const tauS = t2.tauMs / 1000;
+        const x0M = t2.V * (t2.originT - t2.originO) * tauS;
+        const x0Cm = x0M * 100;
+        const recCount = Math.min(t2.numPoints, Math.floor(t2.simTimeMs / t2.tauMs + 1e-6) + 1);
+
+        // Update Table
+        let hRow = '<tr><th>Position</th>';
+        let xCmRow = '<tr><th>x (cm)</th>';
+        let xMRow = '<tr><th>x (m)</th>';
+        let tRow = '<tr><th>Date t (s)</th>';
+
+        for (let k = 0; k < t2.numPoints; k++) {
+          const pt = pts[k];
+          const recorded = k < recCount;
+          const hl = k === t2.originT ? ' style="background:#fffbeb;"' : '';
+          hRow += `<th${hl}>M<sub>${k}</sub></th>`;
+          xCmRow += `<td class="mono"${hl}>${recorded ? `<span class="answer-mask inline-mask">${fmt(pt.xCm, 1)}</span>` : '—'}</td>`;
+          xMRow += `<td class="mono val-blue"${hl}>${recorded ? `<span class="answer-mask inline-mask">${fmt(pt.xM, 3)}</span>` : '—'}</td>`;
+          tRow += `<td class="mono"${hl}>${recorded ? `<span class="answer-mask inline-mask">${fmt(pt.tS, 2)}</span>` : '—'}</td>`;
+        }
+        document.getElementById('t2DataTable').innerHTML = hRow + '</tr>' + xCmRow + '</tr>' + xMRow + '</tr>' + tRow + '</tr>';
+
+        // Update Equation & Interpretation
+        const senseTag = document.getElementById('t2SenseTag');
+        let interp = '';
+        if (Math.abs(t2.V) < 1e-9) {
+          senseTag.textContent = 'V = 0 (Repos)';
+          interp = 'La vitesse est nulle : le mobile reste immobile à son abscisse initiale x₀.';
+        } else if (t2.V > 0) {
+          senseTag.textContent = 'V > 0 (Sens +i⃗)';
+          interp = 'V > 0 : le mobile se déplace dans le sens positif de l\'axe Ox (droite x = f(t) croissante).';
+        } else {
+          senseTag.textContent = 'V < 0 (Sens −i⃗)';
+          interp = 'V < 0 : le mobile se déplace dans le sens contraire de l\'axe Ox (droite x = f(t) décroissante).';
+        }
+
+        const signX0 = x0M >= 0 ? '+ ' : '− ';
+        const eqStr = `x(t) = ${fmt(t2.V, 2)} &middot; t ${signX0}${fmt(Math.abs(x0M), 3)}`;
+        document.getElementById('t2EqBox').innerHTML = `
+          <div style="font-size:0.92rem;"><strong>Équation horaire :</strong> <span class="mono val-green">${eqStr}</span> <span class="note-text">(x en m, t en s)</span></div>
+          <div style="margin-top:3px; font-size:0.79rem;">
+            Pente : <span class="mono val-green">a = &Delta;x / &Delta;t = V = ${fmtSigned(t2.V, 2)} m&middot;s<sup>&minus;1</sup></span>
+            &nbsp;|&nbsp;
+            Ordonnée à l'origine : <span class="mono val-orange">b = x<sub>0</sub> = ${fmtSigned(x0Cm, 1)} cm = ${fmtSigned(x0M, 3)} m</span>
+          </div>
+        `;
+        document.getElementById('t2InterpBox').textContent = interp;
+      }
+
+      function drawTab2Track() {
+        const { ctx, w, h } = setupCanvas(t2TrackCanvas);
+        const pts = getTab2Points();
+        ctx.clearRect(0, 0, w, h);
+
+        // Scale: fit [-12 cm, +16 cm] or dynamic around all points
+        const xs = pts.map(p => p.xCm);
+        const minCm = Math.min(-4, ...xs) - 2.5;
+        const maxCm = Math.max(10, ...xs) + 2.5;
+        const spanCm = Math.max(12, maxCm - minCm);
+        const margin = 42;
+        const pxPerCm = Math.min((w - 2 * margin) / spanCm, 44);
+        const originX = margin + (0 - minCm) * pxPerCm;
+        const axisY = Math.round(h * 0.48);
+
+        // Air table strip
+        ctx.save();
+        ctx.fillStyle = '#ebf5ff';
+        ctx.strokeStyle = '#294a6b';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.roundRect(16, axisY - 34, w - 32, 68, 8);
+        ctx.fill();
+        ctx.stroke();
+
+        // Axis (O, i) always pointing right
+        drawArrow(ctx, 26, axisY, w - 26, axisY, '#334155', 1.8, 9);
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 12px ' + getComputedStyle(document.body).getPropertyValue('--font-sans');
+        ctx.fillText('x', w - 22, axisY - 6);
+
+        // Unit vector i at O
+        drawArrow(ctx, originX, axisY, originX + pxPerCm, axisY, '#dc2626', 2.8, 8);
+        ctx.fillStyle = '#dc2626';
+        ctx.font = 'bold 12px ' + getComputedStyle(document.body).getPropertyValue('--font-sans');
+        ctx.textAlign = 'center';
+        ctx.fillText('i⃗', originX + pxPerCm * 0.5, axisY + 18);
+
+        // Origin O marker
+        ctx.fillStyle = '#294a6b';
+        ctx.font = 'bold 13px ' + getComputedStyle(document.body).getPropertyValue('--font-sans');
+        ctx.fillText('O', originX - 8, axisY + 24);
+        ctx.restore();
+
+        // Movement direction arrow
+        if (Math.abs(t2.V) > 1e-9) {
+          const dir = t2.V > 0 ? 1 : -1;
+          const ax1 = w * 0.5 - 45 * dir;
+          const ax2 = w * 0.5 + 45 * dir;
+          drawArrow(ctx, ax1, axisY - 46, ax2, axisY - 46, '#228b22', 2.2, 8);
+          ctx.fillStyle = '#166534';
+          ctx.font = '600 11px ' + getComputedStyle(document.body).getPropertyValue('--font-sans');
+          ctx.textAlign = 'center';
+          ctx.fillText('Sens du mouvement', w * 0.5, axisY - 54);
+        }
+
+        // Recorded points
+        const maxT = (t2.numPoints - 1) * t2.tauMs;
+        const curT = Math.min(t2.simTimeMs, maxT);
+        const recCount = Math.min(t2.numPoints, Math.floor(curT / t2.tauMs + 1e-6) + 1);
+
+        for (let k = 0; k < recCount; k++) {
+          const pt = pts[k];
+          const px = originX + pt.xCm * pxPerCm;
+          const isT0 = (k === t2.originT);
+          const isO = (k === t2.originO);
+
+          if (isT0) {
+            ctx.beginPath();
+            ctx.arc(px, axisY, 9, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(245, 158, 11, 0.28)';
+            ctx.fill();
+          }
+
+          ctx.beginPath();
+          ctx.arc(px, axisY, 4.2, 0, Math.PI * 2);
+          ctx.fillStyle = isT0 ? '#d97706' : '#294a6b';
+          ctx.fill();
+
+          ctx.fillStyle = isT0 ? '#b45309' : '#0f172a';
+          ctx.font = 'bold 11.5px ' + getComputedStyle(document.body).getPropertyValue('--font-sans');
+          ctx.textAlign = 'center';
+          ctx.fillText('M' + k, px, axisY - 12);
+
+          if (isT0) {
+            ctx.font = '600 10px ' + getComputedStyle(document.body).getPropertyValue('--font-mono');
+            ctx.fillText('t=0', px, axisY - 24);
+          }
+          if (isO && !isT0) {
+            ctx.font = '600 9.5px ' + getComputedStyle(document.body).getPropertyValue('--font-mono');
+            ctx.fillStyle = '#294a6b';
+            ctx.fillText('x=0', px, axisY - 24);
+          }
+        }
+
+        // Gliding puck
+        const u = curT / t2.tauMs;
+        const puckCm = t2.V * (u - t2.originO) * (t2.tauMs / 1000) * 100;
+        const puckX = originX + puckCm * pxPerCm;
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(puckX, axisY, 14, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(41, 74, 107, 0.14)';
+        ctx.strokeStyle = '#294a6b';
+        ctx.lineWidth = 2;
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+
+        // Virtual ruler
+        if (!t2.ruler.userMoved) {
+          t2.ruler.x = Math.max(18, originX - 0.4 * pxPerCm);
+          t2.ruler.y = Math.min(h - 50, axisY + 46);
+        }
+        t2.ruler.visible = t2.showRuler;
+        drawVirtualRuler(ctx, t2.ruler, pxPerCm, 10);
+      }
+
+      function drawTab2Graph() {
+        const { ctx, w, h } = setupCanvas(t2GraphCanvas);
+        const pts = getTab2Points();
+        ctx.clearRect(0, 0, w, h);
+
+        const padL = 44, padR = 26, padT = 22, padB = 30;
+        const plotW = w - padL - padR;
+        const plotH = h - padT - padB;
+
+        const tMin = Math.min(-0.08, ...pts.map(p => p.tS)) - 0.03;
+        const tMax = Math.max(0.12, ...pts.map(p => p.tS)) + 0.03;
+        const xMin = Math.min(-4, ...pts.map(p => p.xCm)) - 2;
+        const xMax = Math.max(10, ...pts.map(p => p.xCm)) + 2;
+
+        const mapX = (t) => padL + ((t - tMin) / (tMax - tMin)) * plotW;
+        const mapY = (x) => padT + ((xMax - x) / (xMax - xMin)) * plotH;
+
+        // Grid
+        ctx.save();
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 1;
+        for (let t = Math.ceil(tMin / 0.04) * 0.04; t <= tMax + 1e-6; t += 0.04) {
+          const gx = mapX(t);
+          ctx.beginPath(); ctx.moveTo(gx, padT); ctx.lineTo(gx, h - padB); ctx.stroke();
+        }
+        const xStep = (xMax - xMin) > 20 ? 4 : 2;
+        for (let x = Math.ceil(xMin / xStep) * xStep; x <= xMax + 1e-6; x += xStep) {
+          const gy = mapY(x);
+          ctx.beginPath(); ctx.moveTo(padL, gy); ctx.lineTo(w - padR, gy); ctx.stroke();
+        }
+        ctx.restore();
+
+        // Axes at t=0 and x=0
+        const zeroX = mapX(0);
+        const zeroY = mapY(0);
+        drawArrow(ctx, padL, zeroY, w - padR + 10, zeroY, '#334155', 1.6, 7);
+        drawArrow(ctx, zeroX, h - padB, zeroX, padT - 10, '#334155', 1.6, 7);
+
+        // Axis titles
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 11px ' + getComputedStyle(document.body).getPropertyValue('--font-sans');
+        ctx.textAlign = 'right';
+        ctx.fillText('t (s)', w - 4, zeroY - 6);
+        ctx.textAlign = 'left';
+        ctx.fillText('x (cm)', zeroX + 6, padT - 2);
+
+        // Ticks labels
+        ctx.fillStyle = '#475569';
+        ctx.font = '10px ' + getComputedStyle(document.body).getPropertyValue('--font-mono');
+        ctx.textAlign = 'center';
+        for (let t = Math.ceil(tMin / 0.04) * 0.04; t <= tMax - 0.01; t += 0.04) {
+          if (Math.abs(t) < 0.005) continue;
+          const gx = mapX(t);
+          ctx.fillText(fmt(t, 2), gx, Math.min(h - 6, zeroY + 13));
+        }
+        ctx.textAlign = 'right';
+        for (let x = Math.ceil(xMin / xStep) * xStep; x <= xMax - 0.5; x += xStep) {
+          if (Math.abs(x) < 0.1) continue;
+          const gy = mapY(x);
+          ctx.fillText(String(Math.round(x)), Math.max(26, zeroX - 5), gy + 3.5);
+        }
+
+        const tauS = t2.tauMs / 1000;
+        const x0Cm = t2.V * (t2.originT - t2.originO) * tauS * 100;
+        const xFunc = (t) => (t2.V * 100) * t + x0Cm;
+
+        // Draw straight line x(t)
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(padL, padT, plotW, plotH);
+        ctx.clip();
+        ctx.strokeStyle = '#294a6b';
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        ctx.moveTo(mapX(tMin), mapY(xFunc(tMin)));
+        ctx.lineTo(mapX(tMax), mapY(xFunc(tMax)));
+        ctx.stroke();
+
+        // Slope triangle (between M3 and M4 or M2 and M4)
+        if (t2.showSlope && Math.abs(t2.V) > 1e-9) {
+          const pA = pts[2];
+          const pB = pts[4];
+          const x1 = mapX(pA.tS), y1 = mapY(pA.xCm);
+          const x2 = mapX(pB.tS), y2 = mapY(pB.xCm);
+
+          ctx.fillStyle = 'rgba(34, 139, 34, 0.14)';
+          ctx.strokeStyle = '#228b22';
+          ctx.lineWidth = 1.8;
+          ctx.setLineDash([4, 3]);
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y1);
+          ctx.lineTo(x2, y2);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          ctx.fillStyle = '#166534';
+          ctx.font = 'bold 10.5px ' + getComputedStyle(document.body).getPropertyValue('--font-mono');
+          ctx.textAlign = 'center';
+          ctx.fillText(`Δt`, (x1 + x2) / 2, y1 + (t2.V > 0 ? 12 : -5));
+          ctx.textAlign = 'left';
+          ctx.fillText(`Δx`, x2 + 4, (y1 + y2) / 2 + 4);
+        }
+        ctx.restore();
+
+        // Y-intercept highlight (b = x0)
+        if (t2.showIntercept) {
+          const iy = mapY(x0Cm);
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(zeroX, iy, 7, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(245, 158, 11, 0.35)';
+          ctx.strokeStyle = '#d97706';
+          ctx.lineWidth = 2;
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = '#b45309';
+          ctx.font = 'bold 10.5px ' + getComputedStyle(document.body).getPropertyValue('--font-mono');
+          ctx.textAlign = 'left';
+          ctx.fillText(`x₀=${fmt(x0Cm, 1)}`, zeroX + 9, iy - 4);
+          ctx.restore();
+        }
+
+        // Recorded red dots
+        const maxT = (t2.numPoints - 1) * t2.tauMs;
+        const recCount = Math.min(t2.numPoints, Math.floor(Math.min(t2.simTimeMs, maxT) / t2.tauMs + 1e-6) + 1);
+        for (let k = 0; k < recCount; k++) {
+          const pt = pts[k];
+          const gx = mapX(pt.tS);
+          const gy = mapY(pt.xCm);
+          ctx.beginPath();
+          ctx.arc(gx, gy, 4, 0, Math.PI * 2);
+          ctx.fillStyle = '#dc2626';
+          ctx.fill();
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1.2;
+          ctx.stroke();
+        }
+      }
+
+      // Tab 2 Event Listeners
+      document.getElementById('t2CoursePresetBtn').addEventListener('click', () => {
+        t2.originO = 1;
+        t2.originT = 2;
+        t2.V = 0.5;
+        t2.playing = false;
+        t2.simTimeMs = (t2.numPoints - 1) * t2.tauMs;
+        t2PlayBtn.innerHTML = '&#9654; Lancer';
+        document.getElementById('t2OriginO').value = '1';
+        document.getElementById('t2OriginT').value = '2';
+        document.getElementById('t2VSlider').value = '0.5';
+        document.getElementById('t2VVal').textContent = '+0,5 m/s';
+        t2.ruler.userMoved = false;
+        updateTab2Panels();
+        drawTab2Track();
+        drawTab2Graph();
+      });
+
+      document.getElementById('t2OriginO').addEventListener('change', (e) => {
+        t2.originO = Number(e.target.value);
+        t2.ruler.userMoved = false;
+        updateTab2Panels(); drawTab2Track(); drawTab2Graph();
+      });
+
+      document.getElementById('t2OriginT').addEventListener('change', (e) => {
+        t2.originT = Number(e.target.value);
+        updateTab2Panels(); drawTab2Track(); drawTab2Graph();
+      });
+
+      document.getElementById('t2VSlider').addEventListener('input', (e) => {
+        t2.V = Number(e.target.value);
+        document.getElementById('t2VVal').textContent = fmtSigned(t2.V, 1) + ' m/s';
+        updateTab2Panels(); drawTab2Track(); drawTab2Graph();
+      });
+
+      t2PlayBtn.addEventListener('click', () => {
+        const maxT = (t2.numPoints - 1) * t2.tauMs;
+        if (!t2.playing && t2.simTimeMs >= maxT - 1) t2.simTimeMs = 0;
+        t2.playing = !t2.playing;
+        t2PlayBtn.innerHTML = t2.playing ? '&#10074;&#10074; Pause' : '&#9654; Lancer';
+      });
+
+      document.getElementById('t2StepBtn').addEventListener('click', () => {
+        t2.playing = false;
+        t2PlayBtn.innerHTML = '&#9654; Lancer';
+        const maxT = (t2.numPoints - 1) * t2.tauMs;
+        const step = Math.floor(t2.simTimeMs / t2.tauMs + 1e-6);
+        t2.simTimeMs = Math.min(maxT, (step + 1) * t2.tauMs);
+        updateTab2Panels(); drawTab2Track(); drawTab2Graph();
+      });
+
+      document.getElementById('t2ResetBtn').addEventListener('click', () => {
+        t2.playing = false;
+        t2PlayBtn.innerHTML = '&#9654; Lancer';
+        t2.simTimeMs = 0;
+        updateTab2Panels(); drawTab2Track(); drawTab2Graph();
+      });
+
+      document.getElementById('t2ShowRuler').addEventListener('change', (e) => { t2.showRuler = e.target.checked; drawTab2Track(); });
+      document.getElementById('t2ShowSlope').addEventListener('change', (e) => { t2.showSlope = e.target.checked; drawTab2Graph(); });
+      document.getElementById('t2ShowIntercept').addEventListener('change', (e) => { t2.showIntercept = e.target.checked; drawTab2Graph(); });
+
+      attachRulerDrag(t2TrackCanvas, () => t2.ruler, drawTab2Track);
+
+      /* =======================================================================
+         5. TAB 3 — ACTIVITÉ 7 (MOUVEMENT CIRCULAIRE UNIFORME)
+         ======================================================================= */
+      const t3 = {
+        Rcm: 4.0,
+        tauMs: 40,
+        numPoints: 12,
+        playing: false,
+        simTimeMs: 480, // full turn shown initially
+        show4Vec: true,
+        showAllVec: false,
+        showChords: true,
+        showLiveVec: true,
+        showRuler: false,
+        vecScale: 0.25, // 1 cm <-> 0.25 m/s
+        ruler: { visible: false, x: 24, y: 24, w: 260, h: 42, userMoved: false }
+      };
+
+      const t3Canvas = document.getElementById('t3Canvas');
+      const t3PlayBtn = document.getElementById('t3PlayBtn');
+
+      function updateTab3Panels() {
+        const tauS = t3.tauMs / 1000;
+        const Rm = t3.Rcm / 100;
+        // Chord between M_{i-1} and M_{i+1} spans 60 deg -> chord = 2*R*sin(30 deg) = R
+        const chordCm = t3.Rcm;
+        const chordM = Rm;
+        const vChord = chordM / (2 * tauS);
+        const vecLenCm = vChord / t3.vecScale;
+
+        const T = 12 * tauS;
+        const fHz = 1 / T;
+        const fRpm = fHz * 60;
+        const Tth = (2 * Math.PI * Rm) / vChord;
+        const Vth = 2 * Math.PI * Rm * fHz;
+
+        document.getElementById('t3RText').textContent = `R = ${fmt(t3.Rcm, 1)} cm`;
+        document.getElementById('t3ChordBox').innerHTML = `
+          <div>Cordes mesurées : <span class="mono val-blue">M<sub>1</sub>M<sub>3</sub> = M<sub>4</sub>M<sub>6</sub> = ${fmt(chordCm, 1)} cm</span></div>
+          <div>Vitesses : <span class="mono val-red">V<sub>2</sub> = V<sub>5</sub> = ${fmt(chordM, 3)} / ${fmt(2 * tauS, 2)} = ${fmt(vChord, 2)} m&middot;s<sup>&minus;1</sup></span></div>
+          <div>Longueur des vecteurs (1 cm &harr; 0,25 m/s) : <span class="mono val-orange">${fmt(vecLenCm, 1)} cm</span></div>
+        `;
+
+        document.getElementById('t3PeriodBox').innerHTML = `
+          <div>Période (1 tour = 12&tau;) : <span class="mono val-green">T = 12 &times; ${t3.tauMs} ms = ${fmt(T, 2)} s</span></div>
+          <div>Fréquence : <span class="mono val-green">f = 1 / T = ${fmt(fHz, 2)} Hz</span> <span class="note-text">(${fmt(fRpm, 1)} tr/min)</span></div>
+          <div>Vérification : <span class="mono val-blue">2&pi;R / V = ${fmt(Tth, 2)} s &approx; T</span></div>
+          <div>Vitesse théorique : <span class="mono val-blue">V = 2&pi;R&middot;f = ${fmt(Vth, 2)} m&middot;s<sup>&minus;1</sup></span></div>
+        `;
+      }
+
+      function drawTab3() {
+        const { ctx, w, h } = setupCanvas(t3Canvas);
+        ctx.clearRect(0, 0, w, h);
+
+        const cx = w * 0.5;
+        const cy = h * 0.52;
+        const maxRadiusPx = Math.min(w, h) * 0.31;
+        const pxPerCm = maxRadiusPx / 5.5;
+        const rPx = t3.Rcm * pxPerCm;
+
+        // Subtle circular grid
+        ctx.save();
+        ctx.strokeStyle = '#f1f5f9';
+        ctx.lineWidth = 1;
+        for (let rr = 1; rr <= 7; rr++) {
+          ctx.beginPath();
+          ctx.arc(cx, cy, rr * pxPerCm, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        ctx.restore();
+
+        // Circular trajectory dashed
+        ctx.save();
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 1.6;
+        ctx.setLineDash([6, 4]);
+        ctx.beginPath();
+        ctx.arc(cx, cy, rPx, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+
+        // Center O & radius R line
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.font = 'bold 12px ' + getComputedStyle(document.body).getPropertyValue('--font-sans');
+        ctx.fillText('O', cx - 14, cy + 14);
+
+        ctx.strokeStyle = '#294a6b';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + rPx, cy);
+        ctx.stroke();
+        ctx.fillStyle = '#294a6b';
+        ctx.font = 'bold 11.5px ' + getComputedStyle(document.body).getPropertyValue('--font-sans');
+        ctx.fillText(`R = ${fmt(t3.Rcm, 1)} cm`, cx + rPx * 0.25, cy + 15);
+
+        // Rotation sense arc
+        ctx.save();
+        const arcR = rPx * 0.58;
+        ctx.strokeStyle = '#294a6b';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.arc(cx, cy, arcR, -Math.PI * 0.12, -Math.PI * 0.34, true);
+        ctx.stroke();
+        const endAng = -Math.PI * 0.34;
+        const ax = cx + arcR * Math.cos(endAng);
+        const ay = cy + arcR * Math.sin(endAng);
+        drawArrow(ctx, ax + 6 * Math.sin(endAng), ay - 6 * Math.cos(endAng), ax, ay, '#294a6b', 1.8, 7);
+        ctx.fillStyle = '#294a6b';
+        ctx.font = '600 11px ' + getComputedStyle(document.body).getPropertyValue('--font-sans');
+        ctx.fillText('sens', cx + arcR * 0.65, cy - arcR * 0.45);
+        ctx.restore();
+
+        // Points M0..M11 (standard trigonometric counter-clockwise: y inverted in canvas)
+        const periodMs = 12 * t3.tauMs;
+        const totalRecorded = Math.min(12, Math.floor(t3.simTimeMs / t3.tauMs + 1e-6) + 1);
+        const pts = [];
+        for (let k = 0; k < 12; k++) {
+          const ang = (k * 30) * Math.PI / 180;
+          pts.push({
+            k,
+            ang,
+            x: cx + rPx * Math.cos(ang),
+            y: cy - rPx * Math.sin(ang)
+          });
+        }
+
+        // Draw chords M1M3 and M4M6 if checked
+        if (t3.showChords && totalRecorded >= 7) {
+          ctx.save();
+          ctx.strokeStyle = '#f59e0b';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([5, 3]);
+          // M1-M3
+          ctx.beginPath(); ctx.moveTo(pts[1].x, pts[1].y); ctx.lineTo(pts[3].x, pts[3].y); ctx.stroke();
+          // M4-M6
+          ctx.beginPath(); ctx.moveTo(pts[4].x, pts[4].y); ctx.lineTo(pts[6].x, pts[6].y); ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = '#b45309';
+          ctx.font = 'bold 10.5px ' + getComputedStyle(document.body).getPropertyValue('--font-mono');
+          ctx.textAlign = 'center';
+          ctx.fillText(`M₁M₃=${fmt(t3.Rcm, 1)}cm`, (pts[1].x + pts[3].x) / 2, (pts[1].y + pts[3].y) / 2 - 6);
+          ctx.fillText(`M₄M₆=${fmt(t3.Rcm, 1)}cm`, (pts[4].x + pts[6].x) / 2 - 8, (pts[4].y + pts[6].y) / 2 + 12);
+          ctx.restore();
+        }
+
+        // Draw recorded points M_k
+        for (let k = 0; k < totalRecorded; k++) {
+          const pt = pts[k];
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, 3.8, 0, Math.PI * 2);
+          ctx.fillStyle = '#294a6b';
+          ctx.fill();
+
+          const lx = cx + (rPx + 18) * Math.cos(pt.ang);
+          const ly = cy - (rPx + 18) * Math.sin(pt.ang);
+          ctx.fillStyle = '#0f172a';
+          ctx.font = '600 11.5px ' + getComputedStyle(document.body).getPropertyValue('--font-sans');
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('M' + k, lx, ly);
+        }
+        ctx.textBaseline = 'alphabetic';
+
+        // Velocity vectors at scale 1 cm <-> 0.25 m/s
+        const vChord = (t3.Rcm / 100) / (2 * (t3.tauMs / 1000));
+        const vecPx = (vChord / t3.vecScale) * pxPerCm;
+
+        const drawTangentVec = (ang, label, color = '#dc2626') => {
+          const sx = cx + rPx * Math.cos(ang);
+          const sy = cy - rPx * Math.sin(ang);
+          // Tangent unit vector for CCW in canvas coords: (-sin(ang), -cos(ang))
+          const tx = -Math.sin(ang);
+          const ty = -Math.cos(ang);
+          const ex = sx + tx * vecPx;
+          const ey = sy + ty * vecPx;
+          drawArrow(ctx, sx, sy, ex, ey, color, 2.8, 9);
+          if (label) {
+            ctx.save();
+            ctx.fillStyle = color;
+            ctx.font = 'bold 12px ' + getComputedStyle(document.body).getPropertyValue('--font-sans');
+            ctx.textAlign = 'center';
+            const mx = (sx + ex) / 2 + 14 * Math.cos(ang);
+            const my = (sy + ey) / 2 - 14 * Math.sin(ang);
+            ctx.fillText(label, mx, my);
+            ctx.restore();
+          }
+        };
+
+        if (t3.showAllVec) {
+          for (let k = 0; k < totalRecorded; k++) {
+            drawTangentVec(pts[k].ang, `V⃗${k}`, '#dc2626');
+          }
+        } else if (t3.show4Vec) {
+          [2, 5, 8, 11].forEach(k => {
+            if (k < totalRecorded) drawTangentVec(pts[k].ang, `V⃗${k}`, '#dc2626');
+          });
+        }
+
+        // Live puck & string
+        const curAng = ((t3.simTimeMs % periodMs) / periodMs) * Math.PI * 2;
+        const px = cx + rPx * Math.cos(curAng);
+        const py = cy - rPx * Math.sin(curAng);
+
+        ctx.save();
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(px, py);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(px, py, 12, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(41, 74, 107, 0.18)';
+        ctx.strokeStyle = '#294a6b';
+        ctx.lineWidth = 2;
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+
+        if (t3.showLiveVec) {
+          drawTangentVec(curAng, 'V⃗', '#228b22');
+        }
+
+        // Timer badge top-left
+        ctx.save();
+        ctx.fillStyle = '#294a6b';
+        ctx.beginPath();
+        ctx.roundRect(14, 12, 192, 26, 6);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 11.5px ' + getComputedStyle(document.body).getPropertyValue('--font-mono');
+        ctx.textAlign = 'left';
+        ctx.fillText(`t = ${Math.round(t3.simTimeMs % periodMs)} ms  (T = ${periodMs} ms)`, 22, 29);
+        ctx.restore();
+
+        // Virtual ruler
+        if (!t3.ruler.userMoved) {
+          t3.ruler.x = 18;
+          t3.ruler.y = h - 52;
+        }
+        t3.ruler.visible = t3.showRuler;
+        drawVirtualRuler(ctx, t3.ruler, pxPerCm, 10);
+      }
+
+      // Tab 3 Event Listeners
+      document.getElementById('t3CoursePresetBtn').addEventListener('click', () => {
+        t3.Rcm = 4.0;
+        t3.tauMs = 40;
+        document.getElementById('t3RSlider').value = '4.0';
+        document.getElementById('t3RVal').textContent = '4,0 cm';
+        document.getElementById('t3TauSlider').value = '40';
+        document.getElementById('t3TauVal').textContent = '40 ms';
+        t3.simTimeMs = 480;
+        t3.playing = false;
+        t3PlayBtn.innerHTML = '&#9654; Lancer';
+        updateTab3Panels();
+        drawTab3();
+      });
+
+      document.getElementById('t3RSlider').addEventListener('input', (e) => {
+        t3.Rcm = Number(e.target.value);
+        document.getElementById('t3RVal').textContent = fmt(t3.Rcm, 1) + ' cm';
+        updateTab3Panels(); drawTab3();
+      });
+
+      document.getElementById('t3TauSlider').addEventListener('input', (e) => {
+        t3.tauMs = Number(e.target.value);
+        document.getElementById('t3TauVal').textContent = t3.tauMs + ' ms';
+        t3.simTimeMs = 12 * t3.tauMs;
+        updateTab3Panels(); drawTab3();
+      });
+
+      t3PlayBtn.addEventListener('click', () => {
+        t3.playing = !t3.playing;
+        t3PlayBtn.innerHTML = t3.playing ? '&#10074;&#10074; Pause' : '&#9654; Lancer';
+      });
+
+      document.getElementById('t3StepBtn').addEventListener('click', () => {
+        t3.playing = false;
+        t3PlayBtn.innerHTML = '&#9654; Lancer';
+        const step = Math.floor(t3.simTimeMs / t3.tauMs + 1e-6);
+        t3.simTimeMs = (step + 1) * t3.tauMs;
+        drawTab3();
+      });
+
+      document.getElementById('t3ResetBtn').addEventListener('click', () => {
+        t3.playing = false;
+        t3PlayBtn.innerHTML = '&#9654; Lancer';
+        t3.simTimeMs = 0;
+        drawTab3();
+      });
+
+      document.getElementById('t3Show4Vec').addEventListener('change', (e) => { t3.show4Vec = e.target.checked; drawTab3(); });
+      document.getElementById('t3ShowAllVec').addEventListener('change', (e) => { t3.showAllVec = e.target.checked; drawTab3(); });
+      document.getElementById('t3ShowChords').addEventListener('change', (e) => { t3.showChords = e.target.checked; drawTab3(); });
+      document.getElementById('t3ShowLiveVec').addEventListener('change', (e) => { t3.showLiveVec = e.target.checked; drawTab3(); });
+      document.getElementById('t3ShowRuler').addEventListener('change', (e) => { t3.showRuler = e.target.checked; drawTab3(); });
+
+      attachRulerDrag(t3Canvas, () => t3.ruler, drawTab3);
+
+      /* =======================================================================
+         6. TAB 4 — ACTIVITÉS 1 & 2 (RÉFÉRENTIELS & TRAJECTOIRES)
+         ======================================================================= */
+      const t4 = {
+        demo: 'wheel',      // 'wheel' | 'train'
+        wheelRef: 'road',   // 'road' | 'bike' | 'both'
+        trainRef: 'station',// 'station' | 'train'
+        playing: true,
+        speed: 1.0,
+        theta: 0,           // wheel rotation angle in rad
+        trainPos: 0,        // train displacement
+        showCenter: true,
+        showSpokes: true
+      };
+
+      const t4Canvas = document.getElementById('t4Canvas');
+      const t4PlayBtn = document.getElementById('t4PlayBtn');
+
+      function drawWheelScene(ctx, x0, y0, vw, vh, mode) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(x0, y0, vw, vh);
+        ctx.clip();
+
+        // Sky & subtle background
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(x0, y0, vw, vh);
+
+        const R = Math.min(vw * 0.12, vh * 0.24, 56);
+        const groundY = y0 + vh * 0.78;
+        const maxTheta = (vw - 2 * R - 40) / R;
+        const thetaMod = t4.theta % Math.max(Math.PI * 4.2, maxTheta);
+
+        // Mode title badge
+        ctx.fillStyle = '#294a6b';
+        ctx.beginPath();
+        ctx.roundRect(x0 + 10, y0 + 10, mode === 'road' ? 215 : 225, 24, 5);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 11.5px ' + getComputedStyle(document.body).getPropertyValue('--font-sans');
+        ctx.textAlign = 'left';
+        ctx.fillText(mode === 'road' ? 'Référentiel : Route (piéton)' : 'Référentiel : Cadre du vélo', x0 + 18, y0 + 26);
+
+        // Road surface
+        ctx.fillStyle = '#e2e8f0';
+        ctx.fillRect(x0, groundY, vw, vh - (groundY - y0));
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x0, groundY);
+        ctx.lineTo(x0 + vw, groundY);
+        ctx.stroke();
+
+        // Road dashes (stationary in road ref, moving backward in bike ref)
+        const dashSpacing = 44;
+        const dashOffset = mode === 'bike' ? -((t4.theta * R) % dashSpacing) : 0;
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 2;
+        for (let dx = x0 - dashSpacing + dashOffset; dx < x0 + vw + dashSpacing; dx += dashSpacing) {
+          ctx.beginPath();
+          ctx.moveTo(dx, groundY + 12);
+          ctx.lineTo(dx + 18, groundY + 12);
+          ctx.stroke();
+        }
+
+        // Fixed tree / lamppost marker on road to emphasize motion
+        const treeX = mode === 'road'
+          ? x0 + vw * 0.85
+          : x0 + (((vw * 0.85 - (t4.theta * R)) % (vw + 60) + (vw + 60)) % (vw + 60)) - 30;
+        ctx.fillStyle = '#78350f';
+        ctx.fillRect(treeX - 3, groundY - 30, 6, 30);
+        ctx.fillStyle = '#228b22';
+        ctx.beginPath();
+        ctx.arc(treeX, groundY - 38, 14, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Center of wheel
+        const startX = x0 + R + 24;
+        const cx = mode === 'road' ? startX + R * thetaMod : x0 + vw * 0.5;
+        const cy = groundY - R;
+
+        // Draw trajectories
+        if (mode === 'road') {
+          // Center straight trajectory
+          if (t4.showCenter) {
+            ctx.strokeStyle = '#294a6b';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 4]);
+            ctx.beginPath();
+            ctx.moveTo(startX, cy);
+            ctx.lineTo(cx, cy);
+            ctx.stroke();
+            ctx.setLineDash([]);
+          }
+          // Cycloid trajectory of valve M (starts at bottom touching ground: x = R(t - sin t), y = groundY - R(1 - cos t))
+          ctx.strokeStyle = '#dc2626';
+          ctx.lineWidth = 2.6;
+          ctx.beginPath();
+          const steps = Math.max(2, Math.floor(thetaMod * 25));
+          for (let s = 0; s <= steps; s++) {
+            const th = (s / steps) * thetaMod;
+            const vx = startX + R * (th - Math.sin(th));
+            const vy = groundY - R * (1 - Math.cos(th));
+            if (s === 0) ctx.moveTo(vx, vy);
+            else ctx.lineTo(vx, vy);
+          }
+          ctx.stroke();
+        } else {
+          // Bike referential: valve M traces a circle around fixed C
+          ctx.strokeStyle = '#dc2626';
+          ctx.lineWidth = 2.6;
+          ctx.beginPath();
+          const sweep = Math.min(t4.theta, Math.PI * 2);
+          ctx.arc(cx, cy, R, Math.PI / 2, Math.PI / 2 + sweep, false);
+          ctx.stroke();
+        }
+
+        // Draw bicycle fork / frame hint if enabled
+        if (t4.showSpokes) {
+          ctx.strokeStyle = '#294a6b';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.lineTo(cx - R * 0.35, cy - R * 1.15);
+          ctx.lineTo(cx - R * 1.15, cy - R * 1.15);
+          ctx.stroke();
+        }
+
+        // Draw wheel rim & spokes
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(cx, cy, R, 0, Math.PI * 2);
+        ctx.stroke();
+
+        const ang = mode === 'road' ? thetaMod : t4.theta;
+        if (t4.showSpokes) {
+          ctx.strokeStyle = '#94a3b8';
+          ctx.lineWidth = 1.2;
+          for (let s = 0; s < 8; s++) {
+            const sa = ang + (s * Math.PI) / 4;
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.lineTo(cx + R * Math.cos(sa), cy + R * Math.sin(sa));
+            ctx.stroke();
+          }
+        }
+
+        // Valve M position (at theta=0, bottom of wheel: dx = -R*sin(ang), dy = R*cos(ang))
+        const mx = cx - R * Math.sin(ang);
+        const my = cy + R * Math.cos(ang);
+
+        // Valve spoke highlight
+        ctx.strokeStyle = '#dc2626';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(mx, my);
+        ctx.stroke();
+
+        // Center dot C
+        ctx.fillStyle = '#294a6b';
+        ctx.beginPath();
+        ctx.arc(cx, cy, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#294a6b';
+        ctx.font = 'bold 11.5px ' + getComputedStyle(document.body).getPropertyValue('--font-sans');
+        ctx.fillText('C', cx + 8, cy - 6);
+
+        // Valve dot M
+        ctx.fillStyle = '#dc2626';
+        ctx.beginPath();
+        ctx.arc(mx, my, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.6;
+        ctx.stroke();
+        ctx.fillStyle = '#dc2626';
+        ctx.font = 'bold 12px ' + getComputedStyle(document.body).getPropertyValue('--font-sans');
+        ctx.fillText('M', mx + 9, my - 6);
+
+        ctx.restore();
+      }
+
+      function drawTrainScene(ctx, w, h) {
+        ctx.clearRect(0, 0, w, h);
+
+        // Sky
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(0, 0, w, h);
+
+        const groundY = h * 0.56;
+        const railY = h * 0.80;
+        const loopSpan = w + 360;
+        const shift = ((t4.trainPos % loopSpan) + loopSpan) % loopSpan;
+
+        // Compute horizontal offset of station and train based on referential
+        const isStationRef = (t4.trainRef === 'station');
+        const stationX = isStationRef ? w * 0.62 : (w * 0.62 + shift) % loopSpan - 180;
+        const trainX = isStationRef ? (w - shift + 80) : (w * 0.5 - 150);
+
+        // Platform line
+        ctx.fillStyle = '#e2e8f0';
+        ctx.fillRect(0, groundY, w, railY - groundY);
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(0, groundY); ctx.lineTo(w, groundY); ctx.stroke();
+
+        // Station building ("Gare")
+        ctx.save();
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#294a6b';
+        ctx.lineWidth = 2;
+        ctx.fillRect(stationX, groundY - 82, 130, 82);
+        ctx.strokeRect(stationX, groundY - 82, 130, 82);
+        // Roof
+        ctx.fillStyle = '#294a6b';
+        ctx.fillRect(stationX - 8, groundY - 94, 146, 14);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 11px ' + getComputedStyle(document.body).getPropertyValue('--font-sans');
+        ctx.textAlign = 'center';
+        ctx.fillText('GARE', stationX + 65, groundY - 83);
+        // Door & window
+        ctx.fillStyle = '#ebf5ff';
+        ctx.fillRect(stationX + 20, groundY - 46, 32, 46);
+        ctx.strokeRect(stationX + 20, groundY - 46, 32, 46);
+        ctx.fillRect(stationX + 74, groundY - 56, 36, 28);
+        ctx.strokeRect(stationX + 74, groundY - 56, 36, 28);
+
+        // Observer C on platform (relative to station)
+        const cX = stationX - 95;
+        ctx.strokeStyle = '#dc2626';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath(); ctx.arc(cX, groundY - 44, 7, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(cX, groundY - 37); ctx.lineTo(cX, groundY - 14);
+        ctx.moveTo(cX - 10, groundY - 29); ctx.lineTo(cX + 10, groundY - 29);
+        ctx.moveTo(cX, groundY - 14); ctx.lineTo(cX - 7, groundY);
+        ctx.moveTo(cX, groundY - 14); ctx.lineTo(cX + 7, groundY);
+        ctx.stroke();
+        ctx.fillStyle = '#dc2626';
+        ctx.font = 'bold 13px ' + getComputedStyle(document.body).getPropertyValue('--font-sans');
+        ctx.fillText('C', cX, groundY - 58);
+        ctx.restore();
+
+        // Rails & sleepers
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.moveTo(0, railY); ctx.lineTo(w, railY); ctx.stroke();
+        const sleeperOffset = isStationRef ? 0 : (shift % 24);
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 2;
+        for (let sx = -24 + sleeperOffset; sx < w + 24; sx += 24) {
+          ctx.beginPath(); ctx.moveTo(sx, railY); ctx.lineTo(sx, railY + 7); ctx.stroke();
+        }
+
+        // Train wagon
+        ctx.save();
+        const trainW = 300, trainH = 68;
+        const trainY = railY - trainH - 10;
+        ctx.fillStyle = '#dbeafe';
+        ctx.strokeStyle = '#294a6b';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.roundRect(trainX, trainY, trainW, trainH, 8);
+        ctx.fill();
+        ctx.stroke();
+
+        // Windows
+        for (let i = 0; i < 5; i++) {
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = '#64748b';
+          ctx.lineWidth = 1.2;
+          ctx.fillRect(trainX + 18 + i * 55, trainY + 12, 40, 26);
+          ctx.strokeRect(trainX + 18 + i * 55, trainY + 12, 40, 26);
+        }
+
+        // Passengers A and B inside train
+        const aX = trainX + 128 + 20;
+        const bX = trainX + 183 + 20;
+        [ { x: aX, label: 'A', col: '#228b22' }, { x: bX, label: 'B', col: '#294a6b' } ].forEach(p => {
+          ctx.fillStyle = p.col;
+          ctx.beginPath(); ctx.arc(p.x, trainY + 25, 7, 0, Math.PI * 2); ctx.fill();
+          ctx.font = 'bold 13px ' + getComputedStyle(document.body).getPropertyValue('--font-sans');
+          ctx.textAlign = 'center';
+          ctx.fillText(p.label, p.x, trainY + 56);
+        });
+
+        // Constant distance bracket between A & B
+        ctx.strokeStyle = '#228b22';
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(aX, trainY - 6);
+        ctx.lineTo(bX, trainY - 6);
+        ctx.stroke();
+        ctx.fillStyle = '#166534';
+        ctx.font = 'bold 10px ' + getComputedStyle(document.body).getPropertyValue('--font-mono');
+        ctx.textAlign = 'center';
+        ctx.fillText('d(A,B) = cte', (aX + bX) / 2, trainY - 11);
+
+        // Wheels
+        const wheelAng = -t4.trainPos / 10;
+        for (let i = 0; i < 4; i++) {
+          const wx = trainX + 36 + i * 76;
+          const wy = railY - 10;
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = '#1e293b';
+          ctx.lineWidth = 2.2;
+          ctx.beginPath(); ctx.arc(wx, wy, 10, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(wx - 7 * Math.cos(wheelAng), wy - 7 * Math.sin(wheelAng));
+          ctx.lineTo(wx + 7 * Math.cos(wheelAng), wy + 7 * Math.sin(wheelAng));
+          ctx.stroke();
+        }
+
+        // Direction arrow
+        if (isStationRef) {
+          drawArrow(ctx, trainX - 10, trainY + 34, trainX - 65, trainY + 34, '#294a6b', 2.6, 9);
+          ctx.fillStyle = '#294a6b';
+          ctx.font = 'bold 11px ' + getComputedStyle(document.body).getPropertyValue('--font-sans');
+          ctx.textAlign = 'right';
+          ctx.fillText('Train en mouvement', trainX - 12, trainY + 22);
+        } else {
+          drawArrow(ctx, stationX + 145, groundY - 45, stationX + 205, groundY - 45, '#dc2626', 2.6, 9);
+          ctx.fillStyle = '#dc2626';
+          ctx.font = 'bold 11px ' + getComputedStyle(document.body).getPropertyValue('--font-sans');
+          ctx.textAlign = 'left';
+          ctx.fillText('Quai recule', stationX + 145, groundY - 56);
+        }
+        ctx.restore();
+
+        // Active referential badge top-left
+        ctx.fillStyle = '#294a6b';
+        ctx.beginPath();
+        ctx.roundRect(12, 12, 235, 26, 6);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 11.5px ' + getComputedStyle(document.body).getPropertyValue('--font-sans');
+        ctx.textAlign = 'left';
+        ctx.fillText(isStationRef ? 'Référentiel : Gare / Quai (C fixe)' : 'Référentiel : Train (A et B fixes)', 20, 29);
+      }
+
+      function drawTab4() {
+        const { ctx, w, h } = setupCanvas(t4Canvas);
+        if (t4.demo === 'wheel') {
+          if (t4.wheelRef === 'both') {
+            const half = Math.floor(w / 2);
+            drawWheelScene(ctx, 0, 0, half - 1, h, 'road');
+            drawWheelScene(ctx, half + 1, 0, w - half - 1, h, 'bike');
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(half, 0); ctx.lineTo(half, h); ctx.stroke();
+          } else {
+            drawWheelScene(ctx, 0, 0, w, h, t4.wheelRef);
+          }
+        } else {
+          drawTrainScene(ctx, w, h);
+        }
+      }
+
+      function updateTab4Hint() {
+        const hint = document.getElementById('t4Hint');
+        if (t4.demo === 'wheel') {
+          if (t4.wheelRef === 'road') hint.textContent = 'Référentiel : Route — La valve M décrit une cycloïde (curviligne)';
+          else if (t4.wheelRef === 'bike') hint.textContent = 'Référentiel : Cadre du vélo — La valve M décrit un cercle';
+          else hint.textContent = 'Comparaison simultanée des deux référentiels';
+        } else {
+          hint.textContent = t4.trainRef === 'station'
+            ? 'Référentiel : Gare — Le train (A et B) est en mouvement'
+            : 'Référentiel : Train — A et B sont au repos, la gare et C reculent';
+        }
+      }
+
+      // Tab 4 Event Listeners
+      document.querySelectorAll('[data-t4-demo]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('[data-t4-demo]').forEach(b => b.classList.remove('active-pill'));
+          btn.classList.add('active-pill');
+          t4.demo = btn.dataset.t4Demo;
+          const isWheel = (t4.demo === 'wheel');
+          document.getElementById('t4WheelRefs').style.display = isWheel ? 'inline-flex' : 'none';
+          document.getElementById('t4TrainRefs').style.display = isWheel ? 'none' : 'inline-flex';
+          document.getElementById('t4WheelPanel').style.display = isWheel ? 'flex' : 'none';
+          document.getElementById('t4TrainPanel').style.display = isWheel ? 'none' : 'flex';
+          document.getElementById('t4ShowCenterWrap').style.display = isWheel ? 'inline-flex' : 'none';
+          document.getElementById('t4ShowSpokesWrap').style.display = isWheel ? 'inline-flex' : 'none';
+          updateTab4Hint();
+          drawTab4();
+        });
+      });
+
+      document.querySelectorAll('[data-wheel-ref]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('[data-wheel-ref]').forEach(b => b.classList.remove('active-pill'));
+          btn.classList.add('active-pill');
+          t4.wheelRef = btn.dataset.wheelRef;
+          updateTab4Hint();
+          drawTab4();
+        });
+      });
+
+      document.querySelectorAll('[data-train-ref]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('[data-train-ref]').forEach(b => b.classList.remove('active-pill'));
+          btn.classList.add('active-pill');
+          t4.trainRef = btn.dataset.trainRef;
+          updateTab4Hint();
+          drawTab4();
+        });
+      });
+
+      t4PlayBtn.addEventListener('click', () => {
+        t4.playing = !t4.playing;
+        t4PlayBtn.innerHTML = t4.playing ? '&#10074;&#10074; Pause' : '&#9654; Lancer';
+      });
+
+      document.getElementById('t4ResetBtn').addEventListener('click', () => {
+        t4.theta = 0;
+        t4.trainPos = 0;
+        drawTab4();
+      });
+
+      document.getElementById('t4SpeedSlider').addEventListener('input', (e) => {
+        t4.speed = Number(e.target.value);
+        document.getElementById('t4SpeedVal').innerHTML = fmt(t4.speed, 1) + '&times;';
+      });
+
+      document.getElementById('t4ShowCenter').addEventListener('change', (e) => { t4.showCenter = e.target.checked; drawTab4(); });
+      document.getElementById('t4ShowSpokes').addEventListener('change', (e) => { t4.showSpokes = e.target.checked; drawTab4(); });
+
+      /* =======================================================================
+         7. MASTER ANIMATION LOOP & RESIZE OBSERVER
+         ======================================================================= */
+      let lastTs = performance.now();
+
+      function animate(now) {
+        const dtSec = Math.min(0.05, (now - lastTs) / 1000);
+        lastTs = now;
+
+        // Tab 1 animation
+        if (activeTab === 'tab1' && t1.playing) {
+          const maxT = (t1Presets[t1.presetKey].positions.length - 1) * t1.tauMs;
+          // Slow motion factor scaled nicely for visual clarity (1x ~ 160ms per real sec)
+          t1.simTimeMs += dtSec * 180 * t1.animSpeed;
+          if (t1.simTimeMs >= maxT) {
+            t1.simTimeMs = maxT;
+            t1.playing = false;
+            t1PlayBtn.innerHTML = '&#9654; Lancer';
+          }
+          drawTab1();
+        }
+
+        // Tab 2 animation
+        if (activeTab === 'tab2' && t2.playing) {
+          const maxT = (t2.numPoints - 1) * t2.tauMs;
+          t2.simTimeMs += dtSec * 100;
+          if (t2.simTimeMs >= maxT) {
+            t2.simTimeMs = maxT;
+            t2.playing = false;
+            t2PlayBtn.innerHTML = '&#9654; Lancer';
+          }
+          updateTab2Panels();
+          drawTab2Track();
+          drawTab2Graph();
+        }
+
+        // Tab 3 animation
+        if (activeTab === 'tab3' && t3.playing) {
+          t3.simTimeMs += dtSec * 160;
+          drawTab3();
+        }
+
+        // Tab 4 animation
+        if (activeTab === 'tab4' && t4.playing) {
+          t4.theta += dtSec * 1.45 * t4.speed;
+          t4.trainPos += dtSec * 95 * t4.speed;
+          drawTab4();
+        }
+
+        requestAnimationFrame(animate);
+      }
+
+      // Responsive redraw on resize
+      function redrawActive() {
+        if (activeTab === 'tab1') drawTab1();
+        if (activeTab === 'tab2') { drawTab2Track(); drawTab2Graph(); }
+        if (activeTab === 'tab3') drawTab3();
+        if (activeTab === 'tab4') drawTab4();
+      }
+
+      // Defer resize redraws to the next animation frame to prevent ResizeObserver feedback loops
+      let resizeRafId = null;
+      function scheduleRedraw() {
+        if (resizeRafId !== null) return;
+        resizeRafId = requestAnimationFrame(() => {
+          resizeRafId = null;
+          redrawActive();
+        });
+      }
+
+      window.addEventListener('resize', scheduleRedraw);
+      if (typeof ResizeObserver !== 'undefined') {
+        const ro = new ResizeObserver(scheduleRedraw);
+        ['t1CanvasWrap', 't2TrackWrap', 't2GraphWrap', 't3CanvasWrap', 't4CanvasWrap'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) ro.observe(el);
+        });
+      }
+
+      /* =======================================================================
+         8. INITIALIZATION
+         ======================================================================= */
+      populateTab1Selectors();
+      updateTab1Panels();
+      updateTab2Panels();
+      updateTab3Panels();
+      updateTab4Hint();
+      redrawActive();
+      requestAnimationFrame(animate);
+    })();
+  </script>
+</body>
+</html>
