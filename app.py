@@ -131,7 +131,7 @@ BASE_DIR = Path(__file__).resolve().parent
 # Libellés lisibles pour les fichiers connus du dossier
 KNOWN_LABELS = {
     "simulation_autoporteur.html": "1BAC — Théorème de l'énergie cinétique",
-    "simulation_mouvement_tc.html": "TC — Leçon 3 : Le mouvement",
+    "simulation_autoporteur1.html": "TC — Leçon 3 : Le mouvement",
     "simulation_autoporteur1.html": "TC — Leçon 3 : Le mouvement (autoporteur1)",
 }
 
@@ -154,7 +154,7 @@ html_files = discover_simulations(BASE_DIR)
 if not html_files:
     st.error(
         f"Aucun fichier HTML de simulation n'a été trouvé dans le dossier : `{BASE_DIR}`.\n\n"
-        "Placez `simulation_autoporteur.html` et/ou `simulation_mouvement_tc.html` "
+        "Placez `simulation_autoporteur.html` et/ou `simulation_mouvement1.html` "
         "dans le même dossier que `app.py`."
     )
     st.stop()
